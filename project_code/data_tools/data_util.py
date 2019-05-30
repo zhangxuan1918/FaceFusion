@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import scipy.io as sio
 
@@ -14,7 +15,7 @@ def load_image_3dmm(image_file, output_size=224):
     """
 
     image = tf.io.read_file(image_file)
-    image = tf.image.decode_jpeg(image)
+    image = tf.image.decode_jpeg(image, channels=3)
 
     # resize image from (450, 450) to (224, 224)
     image = tf.image.resize(image, [output_size, output_size])
@@ -35,22 +36,33 @@ def load_labels_3dmm(label_file, image_original_size=450, image_rescaled_size=22
     # Color_Para: shape=(1, 7) => (7,)
     # Illum_Para: shape=(1, 10) => (10,)
     # pt2d: shape=(2, 68) => (2, 68)
+        flatten to (136, )
     # Tex_Para: shape=(199, 1) => (199,)
+
+    total params: 587
     :param label_file:
-    :return:
+    :return: label of shape (587, )
     """
-    mat_contents = sio.loadmat(label_file)
+    def _read_mat(label_file):
+        mat_contents = sio.loadmat(label_file.numpy())
 
-    labels = []
-    scale_ratio = 1.0 * image_rescaled_size / image_original_size
+        labels = []
+        scale_ratio = 1.0 * image_rescaled_size / image_original_size
 
-    for key in keys_3dmm_params:
-        value = mat_contents[key]
-        if key == 'Pose_param':
-            # rescale pose param as the image is rescaled
-            value[0, 3:] = value[0, 3:] * scale_ratio
-        labels.append(tf.squeeze(tf.convert_to_tensor(value)))
+        for key in keys_3dmm_params:
+            value = mat_contents[key]
+            if key == 'Pose_param':
+                # rescale pose param as the image is rescaled
+                value[0, 3:] = value[0, 3:] * scale_ratio
+            if key == 'pt2d':
+                value = np.reshape(value, (-1, 1))
+            labels.append(tf.squeeze(tf.convert_to_tensor(value, dtype=tf.float32)))
 
+        labels_flatten = tf.concat(labels, axis=0)
+        return labels_flatten
+
+    labels = tf.py_function(_read_mat, [label_file], tf.float32)
+    labels.set_shape((587, ))
     return labels
 
 
