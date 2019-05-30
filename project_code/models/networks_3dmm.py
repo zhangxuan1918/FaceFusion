@@ -32,13 +32,34 @@ class Face3DMM(Resnet50):
         self.flatten = keras.layers.Flatten()
         self.dim_proj = keras.layers.Dense(units=512, name='dim_proj')
 
-        self.head_landmark = keras.layers.Dense(units=self.size_landmark, name='head_landmark')
+        self.head_landmark = keras.layers.Dense(units=self.size_landmark * 2, name='head_landmark')
         self.head_illum = keras.layers.Dense(units=self.size_illum_param, name='head_illum')
         self.head_color = keras.layers.Dense(units=self.size_color_param, name='head_color')
         self.head_tex = keras.layers.Dense(units=self.size_tex_param, name='head_tex')
         self.head_shape = keras.layers.Dense(units=self.size_shape_param, name='head_shape')
         self.head_exp = keras.layers.Dense(units=self.size_exp_param, name='head_exp')
         self.head_pose = keras.layers.Dense(units=self.size_pose_param, name='head_pose')
+
+    def get_landmark_trainable_vars(self):
+        return self.head_landmark.trainable_variables
+
+    def get_illum_trainable_vars(self):
+        return self.head_illum.trainable_variables
+
+    def get_color_trainable_vars(self):
+        return self.head_color.trainable_variables
+
+    def get_tex_trainable_vars(self):
+        return self.head_tex.trainable_variables
+
+    def get_shape_trainable_vars(self):
+        return self.head_shape.trainable_variables
+
+    def get_exp_trainable_vars(self):
+        return self.head_exp.trainable_variables
+
+    def get_pose_trainable_vars(self):
+        return self.head_pose.trainable_variables
 
     def call(self, inputs, training=True):
         x = super(Face3DMM, self).call(inputs=inputs, training=training)
