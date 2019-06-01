@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from PIL import Image
 
-from project_code.morphable_model.model.morphable_model_util import load_BFM
 from project_code.morphable_model import mesh
+from project_code.morphable_model.model.morphable_model_util import load_BFM
 
 
 class MorphableModel(object):
@@ -257,3 +258,56 @@ class MorphableModel(object):
             h=h,
             w=w)
         return image
+
+
+if __name__ == '__main__':
+    bfm = MorphableModel('G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat')
+
+    pic_name = 'IBUG_image_008_1_0'
+    mat_filename = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_samples/{0}.mat'.format(pic_name)
+    import scipy.io as sio
+
+    mat_data = sio.loadmat(mat_filename)
+
+    image_filename = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_samples/{0}.jpg'.format(pic_name)
+    with open(image_filename, 'rb') as file:
+        img = Image.open(file)
+        img_np = np.asarray(img, dtype='int32')
+        h, w, _ = img_np.shape
+    shape_param = mat_data['Shape_Para']
+    exp_param = mat_data['Exp_Para']
+    tex_param = mat_data['Tex_Para']
+    color_param = mat_data['Color_Para']
+    illum_param = mat_data['Illum_Para']
+    pose_param = mat_data['Pose_Para']
+
+    image = bfm.render_3dmm(
+        shape_param=shape_param,
+        exp_param=exp_param,
+        tex_param=tex_param,
+        color_param=color_param,
+        illum_param=illum_param,
+        pose_param=pose_param,
+        h=h,
+        w=w
+    )
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 3, 1)
+    ax.imshow(img_np)
+
+    image = np.asarray(np.round(image), dtype=np.int).clip(0, 255)
+    ax2 = fig.add_subplot(1, 3, 2)
+    ax2.imshow(image)
+
+    image_mask = image > 0
+    img_np_mx = np.ma.masked_array(img_np, mask=image_mask, fill_value=0)
+    image_overlay = img_np_mx + image
+    ax3 = fig.add_subplot(1, 3, 3)
+    ax3.imshow(image_overlay)
+
+    fig.show()
+
+    xxx = 1
