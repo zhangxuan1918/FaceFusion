@@ -4,9 +4,9 @@ import tensorflow as tf
 from project_code.data_tools.data_util import load_image_labels_3dmm
 
 
-def get_3dmm_fine_tune_labeled_data(data_root_folder='H:/300W-LP/300W_LP/'):
+def get_3dmm_fine_tune_labeled_data(data_root_folder='H:/300W-LP/300W_LP/', suffix='*/*.jpg'):
     data_root = pathlib.Path(data_root_folder)
-    all_image_paths = list(data_root.glob('*/*.jpg'))
+    all_image_paths = list(data_root.glob(suffix))
     all_image_paths = [str(p) for p in all_image_paths]
     random.shuffle(all_image_paths)
 

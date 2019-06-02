@@ -17,8 +17,6 @@ color_para_mean = np.zeros((1, 7))
 color_para_var = np.zeros((1, 7))
 illum_para_mean = np.zeros((1, 10))
 illum_para_var = np.zeros((1, 10))
-pt2d_mean = np.zeros((136, 1))
-pt2d_var = np.zeros((136, 1))
 tex_para_mean = np.zeros((199, 1))
 tex_para_var = np.zeros((199, 1))
 
@@ -43,18 +41,44 @@ for mat_file in mat_paths:
     exp_para_mean, exp_para_var = compute_mean_var(mat_contents['Exp_Para'], exp_para_mean, exp_para_var, counter)
     color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'], color_para_mean, color_para_var, counter)
     illum_para_mean, illum_para_var = compute_mean_var(mat_contents['Illum_Para'], illum_para_mean, illum_para_var, counter)
-    pt2d_mean, pt2d_var = compute_mean_var(np.reshape(mat_contents['pt2d'], (-1, 1)), pt2d_mean, pt2d_var, counter)
     tex_para_mean, tex_para_var = compute_mean_var(mat_contents['Tex_Para'], tex_para_mean, tex_para_var, counter)
 
     if counter % 1000 == 0:
         print('counter= %d' % counter)
-        print(pose_para_mean)
-        print(pose_para_var / (counter - 1)
-              )
-np.savez('stats_300W_LP', shape_para_mean, shape_para_var / (counter - 1),
-         pose_para_mean, pose_para_var / (counter - 1), exp_para_mean, exp_para_var / (counter - 1),
-         color_para_mean, color_para_var / (counter - 1), illum_para_mean, illum_para_var / (counter - 1),
-         pt2d_mean, pt2d_var / (counter - 1), tex_para_mean, tex_para_var / (counter - 1))
+        # print(pose_para_mean)
+        # print(pose_para_var / (counter - 1))
+
+        print(color_para_var)
+        print(color_para_var / (counter - 1))
+
+# replace 0 var to be 1
+shape_para_var[shape_para_var < 0.001] = 1.
+pose_para_var[pose_para_var < 0.001] = 1.
+exp_para_var[exp_para_var < 0.001] = 1.
+color_para_var[color_para_var < 0.001] = 1.
+illum_para_var[illum_para_var < 0.001] = 1.
+tex_para_var[tex_para_var < 0.001] = 1.
+
+print('min shape var %5f' % np.min(shape_para_var))
+print('min pose var %5f' % np.min(pose_para_var))
+print('min exp var %5f' % np.min(exp_para_var))
+print('min color var %5f' % np.min(color_para_var))
+print('min illum var %5f' % np.min(illum_para_var))
+print('min tex var %5f' % np.min(tex_para_var))
+
+np.savez('stats_300W_LP',
+         Shape_Para_mean=shape_para_mean,
+         Shape_Para_var=np.sqrt(shape_para_var / (counter - 1)),
+         Pose_Para_mean=pose_para_mean,
+         Pose_Para_var=np.sqrt(pose_para_var / (counter - 1)),
+         Exp_Para_mean=exp_para_mean,
+         Exp_Para_var=np.sqrt(exp_para_var / (counter - 1)),
+         Color_Para_mean=color_para_mean,
+         Color_Para_var=np.sqrt(color_para_var / (counter - 1)),
+         Illum_Para_mean=illum_para_mean,
+         Illum_Para_var=np.sqrt(illum_para_var / (counter - 1)),
+         Tex_Para_mean=tex_para_mean,
+         Tex_Para_var=np.sqrt(tex_para_var / (counter - 1)))
 
 
 
