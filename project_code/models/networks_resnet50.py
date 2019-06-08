@@ -209,7 +209,6 @@ class Resnet50(keras.Model):
     def __init__(self):
         super(Resnet50, self).__init__()
         bn_axis = 3
-        self.out_channel = 2048
         self.conv1 = keras.layers.Conv2D(
             filters=64,
             kernel_size=(7, 7),
@@ -249,6 +248,14 @@ class Resnet50(keras.Model):
         self.identity_block52 = IdentityBlock(kernel_size=3, filters=[512, 512, 2048], stage=5, block=2, trainable=True)
         self.identity_block53 = IdentityBlock(kernel_size=3, filters=[512, 512, 2048], stage=5, block=3, trainable=True)
 
+        self.avg_pool = keras.layers.AveragePooling2D(
+            pool_size=(7, 7),
+            name='avg_pool'
+
+        )
+        self.flatten = keras.layers.Flatten()
+        self.dim_proj = keras.layers.Dense(units=512, name='dim_proj')
+
     def call(self, inputs, training=True):
         # input size 224 x 224 x 3
         x = self.conv1(inputs)
@@ -281,9 +288,13 @@ class Resnet50(keras.Model):
         x = self.identity_block52(x, training=training)
         x = self.identity_block53(x, training=training)
 
+        x = self.avg_pool(x)
+        x = self.flatten(x)
+        x = self.dim_proj(x)
+
         return x
 
     def compute_output_shape(self, input_shape):
-        batch, H, W, C = tf.TensorShape(input_shape).as_list()
+        batch, _, _, _ = tf.TensorShape(input_shape).as_list()
 
-        return tf.TensorShape([batch, H // 32, W //32, self.out_channel])
+        return tf.TensorShape([batch, 512])

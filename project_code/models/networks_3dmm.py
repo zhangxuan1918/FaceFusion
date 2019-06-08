@@ -18,14 +18,6 @@ class Face3DMM(keras.Model):
         self.size_exp_param = size_exp_param
         self.size_pose_param = size_pose_param
 
-        self.avg_pool = keras.layers.AveragePooling2D(
-            pool_size=(7, 7),
-            name='avg_pool'
-
-        )
-        self.flatten = keras.layers.Flatten()
-        self.dim_proj = keras.layers.Dense(units=512, name='dim_proj')
-
         self.head_landmark = keras.layers.Dense(units=self.size_landmark * 2, name='head_landmark')
         self.head_illum = keras.layers.Dense(units=self.size_illum_param, name='head_illum')
         self.head_color = keras.layers.Dense(units=self.size_color_param, name='head_color')
@@ -60,9 +52,6 @@ class Face3DMM(keras.Model):
 
     def call(self, inputs, training=True):
         x = self.resnet(inputs=inputs, training=training)
-        x = self.avg_pool(x)
-        x = self.flatten(x)
-        x = self.dim_proj(x)
 
         x_landmark = self.head_landmark(x)
         x_illum = self.head_illum(x)
