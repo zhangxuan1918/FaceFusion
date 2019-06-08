@@ -20,7 +20,7 @@ tf.config.gpu.set_per_process_memory_fraction(0.9)
 tf.config.gpu.set_per_process_memory_growth(True)
 
 LOG_FREQ = 64
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.01
 BATCH_SIZE = 4
 IMAGE_SIZE = 224
 EPOCHS = 10
@@ -78,6 +78,9 @@ if manager.latest_checkpoint:
     print("Restored from {}".format(manager.latest_checkpoint))
 else:
     print("Initializing from scratch.")
+
+face_model.freeze_resnet()
+print(face_model.summary())
 
 shape_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
 pose_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
