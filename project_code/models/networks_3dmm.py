@@ -1,21 +1,15 @@
 from tensorflow.python import keras
 
-from project_code.models.networks_head import Head3dmm
 from project_code.models.networks_resnet50 import Resnet50
 
 
-class Face3DMM(Resnet50):
+class Face3DMM(keras.Model):
 
-    def __init__(self, size_landmark: int = 68,
-                 size_illum_param: int = 10,
-                 size_color_param: int = 7,
-                 size_tex_param: int = 199,
-                 size_shape_param: int = 199,
-                 size_exp_param: int = 29,
-                 size_pose_param: int = 7
-                 ):
-        super(Face3DMM, self).__init__()
-
+    def __init__(self, size_landmark: int = 68, size_illum_param: int = 10, size_color_param: int = 7,
+                 size_tex_param: int = 199, size_shape_param: int = 199, size_exp_param: int = 29,
+                 size_pose_param: int = 7):
+        super().__init__()
+        self.resnet = Resnet50()
         self.size_landmark = size_landmark
         self.size_illum_param = size_illum_param
         self.size_color_param = size_color_param
@@ -40,6 +34,9 @@ class Face3DMM(Resnet50):
         self.head_exp = keras.layers.Dense(units=self.size_exp_param, name='head_exp')
         self.head_pose = keras.layers.Dense(units=self.size_pose_param, name='head_pose')
 
+    def freeze_resnet(self):
+        self.resnet.trainable = False
+
     def get_landmark_trainable_vars(self):
         return self.head_landmark.trainable_variables
 
@@ -62,7 +59,7 @@ class Face3DMM(Resnet50):
         return self.head_pose.trainable_variables
 
     def call(self, inputs, training=True):
-        x = super(Face3DMM, self).call(inputs=inputs, training=training)
+        x = self.resnet(inputs=inputs, training=training)
         x = self.avg_pool(x)
         x = self.flatten(x)
         x = self.dim_proj(x)
