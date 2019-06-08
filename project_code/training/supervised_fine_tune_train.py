@@ -32,7 +32,7 @@ if not os.path.exists(save_model_to_folder):
     os.makedirs(save_model_to_folder)
     # train from pretrained model since there is no checkpoint
     # copy face_vgg2 as pretrained model
-    copy_tree('G:\PycharmProjects\FaceFusion\project_code\data\pretrained_model\\20190530', save_model_to_folder)
+    copy_tree('G:\PycharmProjects\FaceFusion\project_code\data\pretrained_model\\20190608', save_model_to_folder)
 save_eval_to_folder = os.path.join(save_to_folder, 'eval')
 if not os.path.exists(save_eval_to_folder):
     os.makedirs(save_eval_to_folder)
