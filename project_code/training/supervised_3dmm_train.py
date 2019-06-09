@@ -9,7 +9,7 @@ from tensorflow.python.data.experimental import AUTOTUNE
 from project_code.data_tools.data_generator import get_3dmm_fine_tune_labeled_data_split
 from project_code.models.networks_3dmm import Face3DMM
 from project_code.morphable_model.model.morphable_model import MorphableModel
-from project_code.training.train_util import supervised_3dmm_train_one_step, update_tf_summary, supervised_3dmm_test
+from project_code.training.train_helper import supervised_3dmm_train_one_step, update_tf_summary, supervised_3dmm_test
 
 tf.random.set_seed(22)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'

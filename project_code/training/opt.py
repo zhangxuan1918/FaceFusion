@@ -1,3 +1,28 @@
+def split_3dmm_labels(labels):
+    """
+    split labels into different 3dmm params
+    :param labels:
+    :return:
+    """
+    # get different labels
+    # Shape_Para: (199,)
+    # Pose_Para: (7,)
+    # Exp_Para: (29,)
+    # Color_Para: (7,)
+    # Illum_Para: (10,)
+    # pt2d: (136, )
+    # Tex_Para: (199,)
+
+    shape_labels = labels[:, :199]
+    pose_labels = labels[:, 199: 206]
+    exp_labels = labels[:, 206: 235]
+    color_labels = labels[:, 235: 242]
+    illum_labels = labels[:, 242: 252]
+    landmark_labels = labels[:, 252: 388]
+    tex_labels = labels[:, 388:]
+
+    return shape_labels, pose_labels, exp_labels, color_labels, illum_labels, landmark_labels, tex_labels
+
 
 def compute_landmarks(pose, shape, output_size=224):
     # m: rotation matrix [batch_size x (4x2)]

@@ -1,52 +1,8 @@
-import os
-
 import tensorflow as tf
 
-from project_code.data_tools.data_util import recover_3dmm_params
-from project_code.morphable_model.mesh.visualize import render_and_save
-from project_code.training.landmarks_util import compute_landmarks
-
-
-def split_3dmm_labels(labels):
-    """
-    split labels into different 3dmm params
-    :param labels:
-    :return:
-    """
-    # get different labels
-    # Shape_Para: (199,)
-    # Pose_Para: (7,)
-    # Exp_Para: (29,)
-    # Color_Para: (7,)
-    # Illum_Para: (10,)
-    # pt2d: (136, )
-    # Tex_Para: (199,)
-
-    shape_labels = labels[:, :199]
-    pose_labels = labels[:, 199: 206]
-    exp_labels = labels[:, 206: 235]
-    color_labels = labels[:, 235: 242]
-    illum_labels = labels[:, 242: 252]
-    landmark_labels = labels[:, 252: 388]
-    tex_labels = labels[:, 388:]
-
-    return shape_labels, pose_labels, exp_labels, color_labels, illum_labels, landmark_labels, tex_labels
-
-
-def loss_norm(est, label, loss_type):
-    """
-    compute l1 or l2 loss
-    :param est: estimations
-    :param label: true labels
-    :param loss_type: l1 or l2
-    :return:
-    """
-    if loss_type == 'l2':
-        return tf.reduce_mean(tf.square(est - label))
-    elif loss_type == 'l1':
-        return tf.reduce_mean(tf.abs(est - label))
-    else:
-        raise Exception('unsupported loss_type={0}'.format(loss_type))
+from project_code.training.eval import save_rendered_image_for_eval
+from project_code.training.loss import loss_norm
+from project_code.training.opt import split_3dmm_labels, compute_landmarks
 
 
 def train_one_step_helper(trainable_vars, train_val, train_est, optimizer, loss_type):
@@ -170,61 +126,6 @@ def supervised_3dmm_train_one_step(
     metric_loss_illum.update_state(illum_train_loss)
     metric_loss_landmark.update_state(landmark_train_loss)
     metric_loss_tex.update_state(tex_train_loss)
-
-
-def update_tf_summary(var_name, metric, step):
-    tf.summary.scalar(var_name, metric.result(), step=step)
-    metric.reset_states()
-
-
-def save_rendered_image_for_eval(
-        image,
-        bfm,
-        render_image_size,
-        original_image_size,
-        shape_param,
-        pose_param,
-        exp_param,
-        color_param,
-        illum_param,
-        tex_param,
-        landmark_param,
-        save_eval_to_folder,
-        epoch,
-        batch_id,
-        image_id
-):
-    # plot est
-    image_test, shape_param_test, pose_param_test, exp_param_test, color_param_test, illum_param_test, \
-        landmarks_test, tex_param_test = recover_3dmm_params(
-            image=tf.image.resize(image, [render_image_size, render_image_size]),
-            shape_param=shape_param,
-            pose_param=pose_param,
-            exp_param=exp_param,
-            color_param=color_param,
-            illum_param=illum_param,
-            tex_param=tex_param,
-            landmarks=landmark_param)
-
-    save_to_file = os.path.join(save_eval_to_folder, 'epoch_{epoch}_batch_{batch_id}_image_{image_id}.jpg'.format(
-        epoch=epoch, batch_id=batch_id, image_id=image_id
-    ))
-
-    render_and_save(
-        original_image=image_test,
-        bfm=bfm,
-        shape_param=shape_param_test,
-        exp_param=exp_param_test,
-        tex_param=tex_param_test,
-        color_param=color_param_test,
-        illum_param=illum_param_test,
-        pose_param=pose_param_test,
-        landmarks=landmarks_test,
-        h=render_image_size,
-        w=render_image_size,
-        original_image_size=original_image_size,
-        file_to_save=save_to_file
-    )
 
 
 def supervised_3dmm_test(
