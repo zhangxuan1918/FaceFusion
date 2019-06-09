@@ -11,6 +11,7 @@ from project_code.data_tools.data_util import recover_3dmm_params
 from project_code.models.networks_3dmm import Face3DMM
 from project_code.morphable_model.mesh.visualize import plot_rendered
 from project_code.morphable_model.model.morphable_model import MorphableModel
+from project_code.training.train_util import supervised_fine_tune_train_one_step
 
 tf.random.set_seed(22)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -82,15 +83,9 @@ else:
 face_model.freeze_resnet()
 print(face_model.summary())
 
-shape_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-pose_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-exp_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-color_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-illum_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-landmark_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
-tex_optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
+optimizer = tf.optimizers.Adam(LEARNING_RATE, beta_1=0.5)
 
-ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=face_model)
+ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, net=face_model)
 manager = tf.train.CheckpointManager(ckpt, save_model_to_folder, max_to_keep=3)
 
 train_summary_writer = tf.summary.create_file_writer(save_train_summary_to_folder)
@@ -101,9 +96,8 @@ metric_loss_pose = keras.metrics.Mean(name='loss_pose', dtype=tf.float32)
 metric_loss_exp = keras.metrics.Mean(name='loss_exp', dtype=tf.float32)
 metric_loss_color = keras.metrics.Mean(name='loss_color', dtype=tf.float32)
 metric_loss_illum = keras.metrics.Mean(name='loss_illum', dtype=tf.float32)
-metric_loss_landmark = keras.metrics.Mean(name='loss_landmark', dtype=tf.float32)
 metric_loss_tex = keras.metrics.Mean(name='loss_tex', dtype=tf.float32)
-
+metric_loss_landmark = keras.metrics.Mean(name='loss_landmark', dtype=tf.float32)
 for epoch in range(1):
     for i, value in enumerate(train_image_label_ds):
         if i % 100 == 0:
@@ -111,77 +105,33 @@ for epoch in range(1):
         ckpt.step.assign_add(1)
 
         images, labels = value
-        # Shape_Para: (199,)
-        # Pose_Para: (7,)
-        # Exp_Para: (29,)
-        # Color_Para: (7,)
-        # Illum_Para: (10,)
-        # pt2d: (136, )
-        # Tex_Para: (199,)
-        shape_train_val = labels[:, :199]
-        pose_train_val = labels[:, 199: 206]
-        exp_train_val = labels[:, 206: 235]
-        color_train_val = labels[:, 235: 242]
-        illum_train_val = labels[:, 242: 252]
-        landmark_train_val = labels[:, 252: 388]
-        tex_train_val = labels[:, 388:]
+        supervised_fine_tune_train_one_step(
+            face_model=face_model,
+            images=images,
+            optimizer=optimizer,
+            labels=labels,
+            metric_loss_shape=metric_loss_shape,
+            metric_loss_pose=metric_loss_pose,
+            metric_loss_exp=metric_loss_shape,
+            metric_loss_color=metric_loss_color,
+            metric_loss_illum=metric_loss_illum,
+            metric_loss_tex=metric_loss_tex,
+            metric_loss_landmark=metric_loss_landmark
+        )
 
-        with tf.GradientTape() as shape_tape, \
-                tf.GradientTape() as pose_tape, \
-                tf.GradientTape() as exp_tape, \
-                tf.GradientTape() as color_tape, \
-                tf.GradientTape() as illum_tape, \
-                tf.GradientTape() as landmark_tape, \
-                tf.GradientTape() as tex_tape, \
-                train_summary_writer.as_default():
-
-            landmark_train_est, illum_train_est, color_train_est, tex_train_est, shape_train_est, exp_train_est, pose_train_est = \
-                face_model(images, training=True)
-
-            shape_train_loss = tf.reduce_mean(tf.square(shape_train_val - shape_train_est))
-            pose_train_loss = tf.reduce_mean(tf.square(pose_train_val - pose_train_est))
-            exp_train_loss = tf.reduce_mean(tf.square(exp_train_val - exp_train_est))
-            color_train_loss = tf.reduce_mean(tf.square(color_train_val - color_train_est))
-            illum_train_loss = tf.reduce_mean(tf.square(illum_train_val - illum_train_est))
-            landmark_train_loss = tf.reduce_mean(tf.square(landmark_train_val - landmark_train_est))
-            tex_train_loss = tf.reduce_mean(tf.square(tex_train_val - tex_train_est))
-
-            shape_gradient = shape_tape.gradient(shape_train_loss, face_model.get_shape_trainable_vars())
-            pose_gradient = pose_tape.gradient(pose_train_loss, face_model.get_pose_trainable_vars())
-            exp_gradient = exp_tape.gradient(exp_train_loss, face_model.get_exp_trainable_vars())
-            color_gradient = color_tape.gradient(color_train_loss, face_model.get_color_trainable_vars())
-            illum_gradient = illum_tape.gradient(illum_train_loss, face_model.get_illum_trainable_vars())
-            landmark_gradient = landmark_tape.gradient(landmark_train_loss, face_model.get_landmark_trainable_vars())
-            tex_gradient = tex_tape.gradient(tex_train_loss, face_model.get_tex_trainable_vars())
-
-            shape_optimizer.apply_gradients(zip(shape_gradient, face_model.get_shape_trainable_vars()))
-            pose_optimizer.apply_gradients(zip(pose_gradient, face_model.get_pose_trainable_vars()))
-            exp_optimizer.apply_gradients(zip(exp_gradient, face_model.get_exp_trainable_vars()))
-            color_optimizer.apply_gradients(zip(color_gradient, face_model.get_color_trainable_vars()))
-            illum_optimizer.apply_gradients(zip(illum_gradient, face_model.get_illum_trainable_vars()))
-            landmark_optimizer.apply_gradients(zip(landmark_gradient, face_model.get_landmark_trainable_vars()))
-            tex_optimizer.apply_gradients(zip(tex_gradient, face_model.get_tex_trainable_vars()))
-
-            metric_loss_shape.update_state(shape_train_loss)
-            metric_loss_exp.update_state(exp_train_loss)
-            metric_loss_color.update_state(color_train_loss)
-            metric_loss_illum.update_state(illum_train_loss)
-            metric_loss_landmark.update_state(landmark_train_loss)
-            metric_loss_tex.update_state(tex_train_loss)
-
-            if tf.equal(shape_optimizer.iterations % LOG_FREQ, 0):
-                tf.summary.scalar('loss_train_shape', metric_loss_shape.result(), step=shape_optimizer.iterations)
-                metric_loss_shape.reset_states()
-                tf.summary.scalar('loss_train_exp', metric_loss_exp.result(), step=shape_optimizer.iterations)
-                metric_loss_exp.reset_states()
-                tf.summary.scalar('loss_train_color', metric_loss_color.result(), step=shape_optimizer.iterations)
-                metric_loss_color.reset_states()
-                tf.summary.scalar('loss_train_illum', metric_loss_illum.result(), step=shape_optimizer.iterations)
-                metric_loss_illum.reset_states()
-                tf.summary.scalar('loss_train_landmark', metric_loss_landmark.result(), step=shape_optimizer.iterations)
-                metric_loss_landmark.reset_states()
-                tf.summary.scalar('loss_train_tex', metric_loss_tex.result(), step=shape_optimizer.iterations)
-                metric_loss_tex.reset_states()
+        if tf.equal(optimizer.iterations % LOG_FREQ, 0):
+            tf.summary.scalar('loss_train_shape', metric_loss_shape.result(), step=optimizer.iterations)
+            metric_loss_shape.reset_states()
+            tf.summary.scalar('loss_train_exp', metric_loss_exp.result(), step=optimizer.iterations)
+            metric_loss_exp.reset_states()
+            tf.summary.scalar('loss_train_color', metric_loss_color.result(), step=optimizer.iterations)
+            metric_loss_color.reset_states()
+            tf.summary.scalar('loss_train_illum', metric_loss_illum.result(), step=optimizer.iterations)
+            metric_loss_illum.reset_states()
+            tf.summary.scalar('loss_train_landmark', metric_loss_landmark.result(), step=optimizer.iterations)
+            metric_loss_landmark.reset_states()
+            tf.summary.scalar('loss_train_tex', metric_loss_tex.result(), step=optimizer.iterations)
+            metric_loss_tex.reset_states()
 
         if i > 0 and i % 2000 == 0:
             print('evaluate on test dataset')
