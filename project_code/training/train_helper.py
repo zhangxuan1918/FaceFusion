@@ -5,7 +5,8 @@ from project_code.training.loss import loss_norm
 from project_code.training.opt import split_3dmm_labels, compute_landmarks
 
 
-def train_one_step_helper(trainable_vars, train_val, train_est, optimizer, loss_type):
+def train_one_step_helper(trainable_vars, train_val, train_est, optimizer, loss_type,
+                          gradient_type):
     """
     compute loss and update weights
 
@@ -16,16 +17,16 @@ def train_one_step_helper(trainable_vars, train_val, train_est, optimizer, loss_
     :param loss_type:
     :return:
     """
-    with tf.GradientTape() as tape:
-        train_loss = loss_norm(train_val, train_est, loss_type)
-        train_gradient = tape.gradient(train_loss, trainable_vars)
-        optimizer.apply_gradients(zip(train_gradient, trainable_vars))
+    train_loss = loss_norm(train_val, train_est, loss_type)
+    train_gradient = gradient_type.gradient(train_loss, trainable_vars)
+    optimizer.apply_gradients(zip(train_gradient, trainable_vars))
 
-        return train_loss
+    return train_loss
 
 
 def supervised_3dmm_train_one_step(
         face_model,
+        bfm,
         images,
         optimizer,
         labels,
@@ -36,7 +37,7 @@ def supervised_3dmm_train_one_step(
         metric_loss_illum,
         metric_loss_tex,
         metric_loss_landmark,
-        render_image_size=224
+        input_image_size
 ):
     """
     fine tune 3dmm model one training step
@@ -50,6 +51,8 @@ def supervised_3dmm_train_one_step(
     :param metric_loss_color:
     :param metric_loss_illum:
     :param metric_loss_tex:
+    :param metric_loss_landmark:
+    :param input_image_size: used to compute landmarks 2d
     :return:
     """
 
@@ -57,67 +60,87 @@ def supervised_3dmm_train_one_step(
     shape_train_val, pose_train_val, exp_train_val, color_train_val, illum_train_val, landmark_train_val, tex_train_val = \
         split_3dmm_labels(labels=labels)
 
-    # train one step
-    illum_train_est, color_train_est, tex_train_est, shape_train_est, exp_train_est, pose_train_est = \
-        face_model(images, training=True)
+    with tf.GradientTape() as shape_tape, \
+            tf.GradientTape() as pose_tape, \
+            tf.GradientTape() as exp_tape, \
+            tf.GradientTape() as color_tape, \
+            tf.GradientTape() as illum_tape, \
+            tf.GradientTape() as landmark_tape, \
+            tf.GradientTape() as tex_tape:
 
-    shape_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_shape_trainable_vars(),
-        train_val=shape_train_val,
-        train_est=shape_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_shape_loss_type()
-    )
+        illum_train_est, color_train_est, tex_train_est, shape_train_est, exp_train_est, pose_train_est = \
+            face_model(images, training=True)
 
-    pose_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_pose_trainable_vars(),
-        train_val=pose_train_val,
-        train_est=pose_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_pose_loss_type()
-    )
+        shape_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_shape_trainable_vars(),
+            train_val=shape_train_val,
+            train_est=shape_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_shape_loss_type(),
+            gradient_type=shape_tape
+        )
 
-    exp_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_exp_trainable_vars(),
-        train_val=exp_train_val,
-        train_est=exp_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_exp_loss_type()
-    )
+        pose_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_pose_trainable_vars(),
+            train_val=pose_train_val,
+            train_est=pose_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_pose_loss_type(),
+            gradient_type=pose_tape
+        )
 
-    color_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_color_trainable_vars(),
-        train_val=color_train_val,
-        train_est=color_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_color_loss_type()
-    )
+        exp_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_exp_trainable_vars(),
+            train_val=exp_train_val,
+            train_est=exp_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_exp_loss_type(),
+            gradient_type=exp_tape
+        )
 
-    illum_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_illum_trainable_vars(),
-        train_val=illum_train_val,
-        train_est=illum_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_illum_loss_type()
-    )
+        color_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_color_trainable_vars(),
+            train_val=color_train_val,
+            train_est=color_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_color_loss_type(),
+            gradient_type=color_tape
+        )
 
-    tex_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_tex_trainable_vars(),
-        train_val=tex_train_val,
-        train_est=tex_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_tex_loss_type()
-    )
+        illum_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_illum_trainable_vars(),
+            train_val=illum_train_val,
+            train_est=illum_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_illum_loss_type(),
+            gradient_type=illum_tape
+        )
 
-    # compute landmarks using shape and pose parameter
-    landmark_train_est = compute_landmarks(shape=shape_train_est, pose=pose_train_est, output_size=render_image_size)
-    landmark_train_loss = train_one_step_helper(
-        trainable_vars=face_model.get_shape_trainable_vars() + face_model.get_pose_trainable_vars(),
-        train_val=landmark_train_val,
-        train_est=landmark_train_est,
-        optimizer=optimizer,
-        loss_type=face_model.get_tex_loss_type()
-    )
+        tex_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_tex_trainable_vars(),
+            train_val=tex_train_val,
+            train_est=tex_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_tex_loss_type(),
+            gradient_type=tex_tape
+        )
+
+        # compute landmarks using shape and pose parameter
+        landmark_train_est = compute_landmarks(
+            poses_param=pose_train_est,
+            shapes_param=shape_train_est,
+            exps_param=exp_train_est,
+            bfm=bfm,
+            output_size=input_image_size
+        )
+        landmark_train_loss = train_one_step_helper(
+            trainable_vars=face_model.get_shape_trainable_vars() + face_model.get_pose_trainable_vars(),
+            train_val=landmark_train_val,
+            train_est=landmark_train_est,
+            optimizer=optimizer,
+            loss_type=face_model.get_tex_loss_type(),
+            gradient_type=landmark_tape
+        )
 
     metric_loss_shape.update_state(shape_train_loss)
     metric_loss_exp.update_state(exp_train_loss)

@@ -9,7 +9,8 @@ from tensorflow.python.data.experimental import AUTOTUNE
 from project_code.data_tools.data_generator import get_3dmm_fine_tune_labeled_data_split
 from project_code.models.networks_3dmm import Face3DMM
 from project_code.morphable_model.model.morphable_model import MorphableModel
-from project_code.training.train_helper import supervised_3dmm_train_one_step, update_tf_summary, supervised_3dmm_test
+from project_code.training.eval import update_tf_summary
+from project_code.training.train_helper import supervised_3dmm_train_one_step, supervised_3dmm_test
 
 tf.random.set_seed(22)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -41,7 +42,7 @@ def create_train_fine_tuning_folder(save_to_folder, model_folder=None):
     return save_model_to_folder, save_eval_to_folder, save_train_summary_to_folder, save_test_summary_to_folder
 
 
-def create_3dmm_data_pipeline(data_root_folder):
+def create_3dmm_data_pipeline(data_root_folder, batch_size):
     # load training dataset
     train_image_label_ds, test_image_label_ds = get_3dmm_fine_tune_labeled_data_split(
         data_root_folder=data_root_folder,
@@ -95,7 +96,10 @@ def supervised_3dmm_train(
         create_train_fine_tuning_folder(save_to_folder=save_to_folder, model_folder=model_folder)
 
     # prepare data pipeline
-    train_image_label_ds, test_image_label_ds = create_3dmm_data_pipeline(data_root_folder=data_root_folder)
+    train_image_label_ds, test_image_label_ds = create_3dmm_data_pipeline(
+        data_root_folder=data_root_folder,
+        batch_size=batch_size
+    )
 
     # create or load face model
     face_model, manager, ckpt = create_or_load_face_model(
@@ -130,6 +134,7 @@ def supervised_3dmm_train(
             with train_summary_writer.as_default():
                 supervised_3dmm_train_one_step(
                     face_model=face_model,
+                    bfm=bfm,
                     images=images,
                     optimizer=optimizer,
                     labels=labels,
@@ -139,7 +144,8 @@ def supervised_3dmm_train(
                     metric_loss_color=metric_loss_color,
                     metric_loss_illum=metric_loss_illum,
                     metric_loss_tex=metric_loss_tex,
-                    metric_loss_landmark=metric_loss_landmark
+                    metric_loss_landmark=metric_loss_landmark,
+                    input_image_size=input_image_size
                 )
 
                 if tf.equal(optimizer.iterations % log_freq, 0):
@@ -152,7 +158,7 @@ def supervised_3dmm_train(
                     update_tf_summary(var_name='loss_train_tex', metric=metric_loss_tex.result(),
                                       step=optimizer.iterations)
 
-            if batch_id > 0 and batch_id % 2000 == 0:
+            if batch_id > 0 and batch_id % 100 == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     supervised_3dmm_test(
@@ -189,7 +195,7 @@ if __name__ == '__main__':
     # path to load 3dmm data
     data_root_folder = 'H:/300W-LP/300W_LP/'
     # path to load trained model, can be vgg2 model or face model
-    model_folder = 'G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190530/'
+    model_folder = 'G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190610/'
     # folder to save model, eval and summary
     save_to_folder = 'G:\PycharmProjects\FaceFusion\project_code\data\supervised_3dmm_model\{0}'.format(
         yyyy_mm_dd

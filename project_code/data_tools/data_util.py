@@ -58,7 +58,7 @@ def load_labels_3dmm(label_file, image_original_size=450, image_rescaled_size=22
             value = mat_contents[key]
             if key == 'pt2d':
                 # for landmark we just normalize by image size
-                # value = np.reshape(value, (-1, 1))
+                value = np.reshape(value, (-1, 1))
                 value *= scale_ratio
             elif key == 'Pose_param':
                 # mean

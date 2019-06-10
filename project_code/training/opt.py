@@ -19,13 +19,14 @@ def split_3dmm_labels(labels):
     # Illum_Para: (10,)
     # pt2d: (136, )
     # Tex_Para: (199,)
-
+    n_size = labels.shape[0]
     shape_labels = labels[:, :199]
     pose_labels = labels[:, 199: 206]
     exp_labels = labels[:, 206: 235]
     color_labels = labels[:, 235: 242]
     illum_labels = labels[:, 242: 252]
-    landmark_labels = labels[:, 252: 388]
+    # reshape landmark
+    landmark_labels = tf.reshape(labels[:, 252: 388], (-1, 2, 68))
     tex_labels = labels[:, 388:]
 
     return shape_labels, pose_labels, exp_labels, color_labels, illum_labels, landmark_labels, tex_labels
@@ -42,7 +43,7 @@ def compute_landmarks(poses_param, shapes_param, exps_param, bfm, output_size=22
     :param bfm: 3dmm model
     :param output_size: 2d landmarks position on image of shape (output_size, output_size)
     :param input_size: the input size of face model, the pose params are computed with image of shape (input_size, input_size)
-    :return:
+    :return: tensor: shape [batch_size, 2, 68]
     """
 
     # convert tensor to numpy array

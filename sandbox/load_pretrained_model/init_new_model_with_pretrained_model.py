@@ -47,4 +47,4 @@ for fm_layer in face_model.resnet.layers:
                 fm_sublayer.set_weights(pm_layer.get_weights())
 
 print(face_model.summary())
-face_model.save_weights('G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190608/face_model_pretrained_face_vgg2.ckpt')
+face_model.save_weights('G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190610/face_model_pretrained_face_vgg2.ckpt')
