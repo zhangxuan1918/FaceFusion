@@ -42,7 +42,7 @@ def render_and_save(
     # resize landmarks
     landmarks = landmarks * w
     # resize pose param
-    pose_param[3:] = pose_param[3:] / original_image_size * w
+    pose_param[0, 3:] = pose_param[0, 3:] / original_image_size * w
 
     # render images
     image = bfm.render_3dmm(

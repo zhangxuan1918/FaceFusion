@@ -46,6 +46,9 @@ class MorphableModel(object):
         self.triangles = self.model['tri']
         self.full_triangles = np.vstack((self.model['tri'], self.model['tri_mouth']))
 
+    def get_landmark_indices(self):
+        return self.kpt_ind
+
     def generate_vertices(self, shape_param, exp_param):
         """
         generate vertices from shape_para and exp_para

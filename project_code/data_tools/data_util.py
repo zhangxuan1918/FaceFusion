@@ -58,7 +58,7 @@ def load_labels_3dmm(label_file, image_original_size=450, image_rescaled_size=22
             value = mat_contents[key]
             if key == 'pt2d':
                 # for landmark we just normalize by image size
-                value = np.reshape(value, (-1, 1))
+                # value = np.reshape(value, (-1, 1))
                 value /= image_original_size
             elif key == 'Pose_param':
                 # mean
@@ -102,7 +102,7 @@ def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
     :param: exp_param: shape=(29,) => (29, 1)
     :param: color_param: shape=(7,) => (1, 7)
     :param: illum_param: shape=(10,) => (1, 10)
-    :param: landmarks: shape=(136, ) => (2, 68)
+    :param: landmarks: shape=(2, 68) => (2, 68)
     :param: tex_param: shape=(199,) => (199, 1)
     :returns:
         shape_para: (199, 1)
