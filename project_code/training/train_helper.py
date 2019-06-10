@@ -136,7 +136,7 @@ def supervised_3dmm_test(
         batch_id,
         step,
         render_image_size,
-        original_image_size,
+        input_image_size,
         save_eval_to_folder):
     print('evaluate on test dataset')
 
@@ -155,7 +155,7 @@ def supervised_3dmm_test(
         shape_test_val, pose_test_val, exp_test_val, color_test_val, illum_test_val, landmark_test_val, tex_test_val = \
             split_3dmm_labels(labels=labels)
 
-        landmark_test_est, illum_test_est, color_test_est, tex_test_est, shape_test_est, exp_test_est, pose_test_est = \
+        illum_test_est, color_test_est, tex_test_est, shape_test_est, exp_test_est, pose_test_est = \
             face_model(images, training=False)
 
         shape_test_loss += loss_norm(label=shape_test_val, est=shape_test_est,
@@ -171,6 +171,13 @@ def supervised_3dmm_test(
         tex_test_loss += loss_norm(label=tex_test_val, est=tex_test_est,
                                    loss_type=face_model.get_tex_loss_type())
 
+        landmark_test_est = compute_landmarks(
+            poses_param=pose_test_est,
+            shapes_param=shape_test_est,
+            exps_param=exp_test_est,
+            bfm=bfm,
+            output_size=input_image_size
+        )
         landmark_test_loss += loss_norm(label=landmark_test_val, est=landmark_test_est,
                                         loss_type=face_model.get_landmark_loss_type())
 
@@ -182,7 +189,7 @@ def supervised_3dmm_test(
                     image=images[j],
                     bfm=bfm,
                     render_image_size=render_image_size,
-                    original_image_size=original_image_size,
+                    input_image_size=input_image_size,
                     shape_param=shape_test_val,
                     pose_param=pose_test_val,
                     exp_param=exp_test_val,

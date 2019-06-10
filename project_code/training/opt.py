@@ -32,11 +32,20 @@ def split_3dmm_labels(labels):
 
 
 def compute_landmarks(poses_param, shapes_param, exps_param, bfm, output_size=224):
-    # shape_param: shape = (batch_size, 199) = > (batch_size, 199, 1)
-    # pose_param: shape = (batch_size, 7) = > (batch_size, 1, 7)
-    # exp_param: shape = (batch_size, 29) = > (batch_size, 29, 1)
+    """
+    compute landmarks using pose, shape and expression params
+    note, now we compute it in numpy instead of tensor, can be problem for performance
 
-    # convert tensor to numpy
+    :param poses_param: batch pose params. (batch_size, 199) = > (batch_size, 199, 1)
+    :param shapes_param: batch shapes params. (batch_size, 7) = > (batch_size, 1, 7)
+    :param exps_param: batch expression params. (batch_size, 29) = > (batch_size, 29, 1)
+    :param bfm: 3dmm model
+    :param output_size: 2d landmarks position on image of shape (output_size, output_size)
+    :param input_size: the input size of face model, the pose params are computed with image of shape (input_size, input_size)
+    :return:
+    """
+
+    # convert tensor to numpy array
     poses_param = np.array(poses_param).reshape((-1, 1, 7))
     shapes_param = np.array(shapes_param).reshape((-1, 199, 1))
     exps_param = np.array(exps_param).reshape((-1, 29, 1))

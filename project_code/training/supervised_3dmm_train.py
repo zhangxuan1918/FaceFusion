@@ -163,7 +163,7 @@ def supervised_3dmm_train(
                         batch_id=batch_id,
                         step=optimizer.iterations,
                         render_image_size=render_image_size,
-                        original_image_size=input_image_size,
+                        input_image_size=input_image_size,
                         save_eval_to_folder=save_eval_to_folder)
 
                     save_path = manager.save()

@@ -22,6 +22,8 @@ def load_image_mat(pic_name):
         img_np = np.asarray(img, dtype="int32")
 
     poses_param = np.expand_dims(mat_data['Pose_Para'], 0)
+    poses_param[0, 0, 3:] = poses_param[0, 0, 3:] * 224 / 450
+
     shapes_param = np.expand_dims(mat_data['Shape_Para'], 0)
     exps_param = np.expand_dims(mat_data['Exp_Para'], 0)
     lms = np.expand_dims(mat_data['pt2d'], 0)
@@ -39,9 +41,9 @@ tf_landmarks = compute_landmarks(
     poses_param=poses_param,
     shapes_param=shapes_param,
     exps_param=exps_param,
-    bfm=bfm,
-    output_size=450)
+    bfm=bfm)
 landmarks = np.array(tf_landmarks)
+landmarks = landmarks / 224 * 450
 
 
 def plot_landmarks(ax, image, lms):
