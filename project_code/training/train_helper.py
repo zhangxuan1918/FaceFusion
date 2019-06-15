@@ -126,19 +126,17 @@ def supervised_3dmm_train_one_step(
         )
 
         # compute landmarks using shape and pose parameter
-        landmark_train_est = compute_landmarks(
-            poses_param=pose_train_est,
-            shapes_param=shape_train_est,
-            exps_param=exp_train_est,
-            bfm=bfm,
-            output_size=input_image_size
+        landmark_train_est = tf.py_function(
+            compute_landmarks,
+            [pose_train_est, shape_train_est, exp_train_est, input_image_size],
+            tf.float32
         )
         landmark_train_loss = train_one_step_helper(
-            trainable_vars=face_model.get_shape_trainable_vars() + face_model.get_pose_trainable_vars(),
+            trainable_vars=face_model.get_shape_trainable_vars() + face_model.get_pose_trainable_vars() + face_model.get_exp_trainable_vars(),
             train_val=landmark_train_val,
             train_est=landmark_train_est,
             optimizer=optimizer,
-            loss_type=face_model.get_tex_loss_type(),
+            loss_type='l2',
             gradient_type=landmark_tape
         )
 

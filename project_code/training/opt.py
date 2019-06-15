@@ -2,7 +2,10 @@ import numpy as np
 import tensorflow as tf
 
 from project_code.morphable_model import mesh
+from project_code.morphable_model.model.morphable_model import MorphableModel
 from project_code.training.tf_util import get_shape
+bfm_mat_path = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat'
+bfm = MorphableModel(bfm_mat_path)
 
 
 def split_3dmm_labels(labels):
@@ -32,7 +35,7 @@ def split_3dmm_labels(labels):
     return shape_labels, pose_labels, exp_labels, color_labels, illum_labels, landmark_labels, tex_labels
 
 
-def compute_landmarks(poses_param, shapes_param, exps_param, bfm, output_size=224):
+def compute_landmarks(poses_param, shapes_param, exps_param, output_size=224):
     """
     compute landmarks using pose, shape and expression params
     note, now we compute it in numpy instead of tensor, can be problem for performance
@@ -73,4 +76,4 @@ def compute_landmarks(poses_param, shapes_param, exps_param, bfm, output_size=22
         vertex2d_landmarks = mesh.transform.to_image(vertices=projected_vertices, h=output_size, w=output_size)
         landmarks.append(vertex2d_landmarks[:, :2].T)
 
-    return tf.constant(landmarks)
+    return np.array(landmarks)
