@@ -262,6 +262,57 @@ class MorphableModel(object):
             w=w)
         return image
 
+    def render_3dmm_tf(self, shape_param, exp_param, tex_param, color_param, illum_param,
+                    pose_param, w=224, h=224):
+        """
+        render 3dmm to image
+        :param shape_param: (n_shape_para, 1)
+        :param exp_param:   (n_exp_para, 1)
+        :param tex_param:   (n_tex_para, 1)
+        :param color_param: (1, n_color_param)
+        :param illum_param: (1, n_illum_param)
+        :param pose_param:  (1, n_pose_param)
+        :param w:
+        :param h:
+        :return:
+        """
+        vertices = self.generate_vertices(shape_param=shape_param, exp_param=exp_param)
+        texture = self.generate_tex(tex_param=tex_param)
+
+        vertex_norm = mesh.render.generate_vertex_norm(
+            vertices=vertices,
+            triangles=self.triangles,
+            n_vertices=self.n_vertices,
+            n_triangles=self.n_triangles)
+
+        tex_color = self.generate_tex_color(
+            tex=texture,
+            color_param=color_param,
+            illum_param=illum_param,
+            vertex_norm=vertex_norm)
+
+        scale = pose_param[0, 6]
+        angles = pose_param[0, 0:3]
+        translate = pose_param[0, 3:6]
+
+        transformed_vertices = self.transform_3ddfa(
+            vertices=vertices,
+            scale=scale,
+            angles=angles,
+            t3d=translate)
+
+        image_vertices = mesh.transform.to_image(
+            vertices=transformed_vertices,
+            h=h,
+            w=w)
+        image = mesh.render.render_colors(
+            vertices=image_vertices,
+            triangles=self.triangles,
+            colors=tex_color,
+            h=h,
+            w=w)
+        return image
+
 
 if __name__ == '__main__':
     bfm = MorphableModel('G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat')
