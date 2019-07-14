@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  face-fusion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: xuan1918/facefusion:v0.0.1
+    environment:
+        - NVIDIA_VISIBLE_DEVICES=all
+    env_file:
+      - face_fusion.env
