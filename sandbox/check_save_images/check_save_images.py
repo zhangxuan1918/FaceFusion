@@ -7,16 +7,16 @@ from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.training.eval import save_images
 
-tf_bfm = TfMorphableModel('../../examples/Data/BFM/Out/BFM.mat')
+tf_bfm = TfMorphableModel('/opt/project/examples/Data/BFM/Out/BFM.mat')
 # --load mesh data
 pic_name = 'IBUG_image_008_1_0'
 # pic_name = 'IBUG_image_014_01_2'
-image_filename = '../../examples/Data/{0}.jpg'.format(pic_name)
+image_filename = '/opt/project/examples/Data/{0}.jpg'.format(pic_name)
 with open(image_filename, 'rb') as file:
     img = PIL.Image.open(image_filename)
     img = np.asarray(img, dtype=np.int)
 
-mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
+mat_filename = '/opt/project/examples/Data/{0}.mat'.format(pic_name)
 mat_data = sio.loadmat(mat_filename)
 sp = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
 ep = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)

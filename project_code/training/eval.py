@@ -82,7 +82,8 @@ def save_images(images, titles, file_to_save=None, landmarks=None):
         if landmarks is None or len(landmarks) != n_images:
             landmarks = [None] * 2
 
-        for i, image, lm, title in enumerate(zip(images, landmarks, titles)):
+        for i in range(n_images):
+            image, lm, title = images[i], landmarks[i], titles[i]
             ax = fig.add_subplot(1, n_images, i + 1)
             ax.imshow(image)
             ax.set_title(title)

@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from project_code.data_tools.data_const import keys_3dmm_params
 
-params_mean_var = np.load('G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_mean_var\stats_300W_LP.npz')
+params_mean_var = np.load('/opt/project/project_code/data/3dmm/300W_LP_mean_var/stats_300W_LP.npz')
 
 
 def load_image_3dmm(image_file, output_size=224):
