@@ -2,6 +2,9 @@ from tensorflow.python import keras
 import tensorflow as tf
 
 
+def resnet50_header(inputs):
+
+
 class Head3dmm(keras.Model):
 
     def __init__(self, output_channel: int, header_name):

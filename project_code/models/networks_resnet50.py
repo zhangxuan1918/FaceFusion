@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from keras import layers
+from tensorflow.python.keras import layers, Model
 from tensorflow.python.keras.layers import Conv2D, Activation, BatchNormalization, MaxPooling2D
 from tensorflow.python.keras.regularizers import l2
 
@@ -163,7 +163,7 @@ def resnet50_backend(inputs):
     x = conv_block(x, 3, [512, 512, 2048], stage=5, block=1, trainable=True)
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block=2, trainable=True)
     x = identity_block(x, 3, [512, 512, 2048], stage=5, block=3, trainable=True)
-    return x
+    return Model(inputs, x)
 
 
 def resnet50_backend_truncated(inputs):
@@ -200,4 +200,4 @@ def resnet50_backend_truncated(inputs):
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block=4, trainable=True)
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block=5, trainable=True)
     x = identity_block(x, 3, [256, 256, 1024], stage=4, block=6, trainable=True)
-    return x
+    return Model(inputs, x)
