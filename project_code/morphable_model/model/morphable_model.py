@@ -129,7 +129,6 @@ class MorphableModel(object):
         l = np.asarray([np.cos(thetal) * np.sin(phil), np.sin(thetal), np.cos(thetal) * np.cos(phil)])
         h = l + np.asarray([0, 0, 1])
         h = h / np.sqrt(np.sum(np.square(h)))
-        h = h / np.sqrt(np.sum(np.square(h)))
 
         return h.reshape((-1, 1)), ks, v, amb, dirt, l.reshape((-1, 1))
 
