@@ -90,7 +90,7 @@ def load_image_labels_3dmm(image_file, label_file):
     return load_image_3dmm(image_file=image_file), load_labels_3dmm(label_file=label_file)
 
 
-def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
+def recover_3dmm_params(shape_param, pose_param, exp_param, color_param,
                         illum_param, tex_param, landmarks, output_size, input_size):
     """
     add mean and times std
@@ -115,28 +115,21 @@ def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
     """
     # reshape
     scale = 1.0 * output_size / input_size
-    shape_param = np.reshape(shape_param, (-1, 1))
-    pose_param = np.reshape(pose_param, (1, -1))
-    pose_param[0, 3:] = pose_param[0, 3:] * scale
-    exp_param = np.reshape(exp_param, (-1, 1))
-    color_param = np.reshape(color_param, (1, -1))
-    illum_param = np.reshape(illum_param, (1, -1))
-    landmarks = np.reshape(landmarks, (2, -1))
+    shape_param = tf.expand_dims(shape_param, axis=1)
+    pose_param = tf.expand_dims(pose_param, axis=0)
+    pose_param = tf.concat(pose_param[0, 0:])
+    exp_param = tf.expand_dims(exp_param, axis=1)
+    color_param = tf.expand_dims(color_param, axis=0)
+    illum_param = tf.expand_dims(illum_param, axis=0)
     landmarks = landmarks * scale
-    tex_param = np.reshape(tex_param, (-1, 1))
+    tex_param = tf.expand_dims(tex_param, axis=1)
 
 
-    shape_param = np.add(np.multiply(np.array(shape_param), params_mean_var['Shape_Para_var']),
-                         params_mean_var['Shape_Para_mean'])
-    pose_param = np.add(np.multiply(np.array(pose_param), params_mean_var['Pose_Para_var']),
-                        params_mean_var['Pose_Para_mean'])
-    exp_param = np.add(np.multiply(np.array(exp_param), params_mean_var['Exp_Para_var']),
-                       params_mean_var['Exp_Para_mean'])
-    color_param = np.add(np.multiply(np.array(color_param), params_mean_var['Color_Para_var']),
-                         params_mean_var['Color_Para_mean'])
-    illum_param = np.add(np.multiply(np.array(illum_param), params_mean_var['Illum_Para_var']),
-                         params_mean_var['Illum_Para_mean'])
-    tex_param = np.add(np.multiply(np.array(tex_param), params_mean_var['Tex_Para_var']),
-                       params_mean_var['Tex_Para_mean'])
+    shape_param = shape_param * params_mean_var['Shape_Para_var'] + params_mean_var['Shape_Para_mean']
+    pose_param = pose_param * params_mean_var['Pose_Para_var'] + params_mean_var['Pose_Para_mean']
+    exp_param = exp_param * params_mean_var['Exp_Para_var'] + params_mean_var['Exp_Para_mean']
+    color_param = color_param + params_mean_var['Color_Para_var'] + params_mean_var['Color_Para_mean']
+    illum_param = illum_param + params_mean_var['Illum_Para_var'] + params_mean_var['Illum_Para_mean']
+    tex_param = tex_param + params_mean_var['Tex_Para_var'] + params_mean_var['Tex_Para_mean']
 
-    return np.array(image), shape_param, pose_param, exp_param, color_param, illum_param, landmarks, tex_param
+    return shape_param, pose_param, exp_param, color_param, illum_param, landmarks, tex_param, scale
