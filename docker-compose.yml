@@ -9,3 +9,5 @@ services:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
       - face_fusion.env
+
+#docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"

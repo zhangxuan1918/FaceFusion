@@ -1,3 +1,5 @@
 .idea
 project_code/data/
 __pycache__
+examples
+data

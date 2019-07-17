@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.training.eval import save_rendered_image_for_eval
 from project_code.training.loss import loss_norm
@@ -26,7 +27,7 @@ def train_one_step_helper(trainable_vars, train_val, train_est, optimizer, loss_
 
 def supervised_3dmm_train_one_step(
         face_model,
-        bfm,
+        bfm: TfMorphableModel,
         images,
         optimizer,
         labels,
@@ -126,10 +127,12 @@ def supervised_3dmm_train_one_step(
         )
 
         # compute landmarks using shape and pose parameter
-        landmark_train_est = tf.py_function(
-            compute_landmarks,
-            [pose_train_est, shape_train_est, exp_train_est, input_image_size],
-            tf.float32
+        landmark_train_est = compute_landmarks(
+            poses_param=pose_train_est,
+            shapes_param=shape_train_est,
+            exps_param=exp_train_est,
+            bfm=bfm,
+            input_image_size=input_image_size
         )
         landmark_train_loss = train_one_step_helper(
             trainable_vars=face_model.get_shape_trainable_vars() + face_model.get_pose_trainable_vars() + face_model.get_exp_trainable_vars(),
@@ -152,7 +155,7 @@ def supervised_3dmm_train_one_step(
 def supervised_3dmm_test(
         test_image_label_ds,
         face_model,
-        bfm,
+        bfm: TfMorphableModel,
         epoch,
         batch_id,
         step,
@@ -197,7 +200,7 @@ def supervised_3dmm_test(
             shapes_param=shape_test_est,
             exps_param=exp_test_est,
             bfm=bfm,
-            output_size=input_image_size
+            input_image_size=input_image_size
         )
         landmark_test_loss += loss_norm(label=landmark_test_val, est=landmark_test_est,
                                         loss_type=face_model.get_landmark_loss_type())
@@ -211,37 +214,20 @@ def supervised_3dmm_test(
                     bfm=bfm,
                     render_image_size=render_image_size,
                     input_image_size=input_image_size,
-                    shape_param=shape_test_val,
-                    pose_param=pose_test_val,
-                    exp_param=exp_test_val,
-                    color_param=color_test_val,
-                    illum_param=illum_test_val,
-                    tex_param=tex_test_val,
-                    landmark_param=landmark_test_val,
+                    shape_param=shape_test_val[j],
+                    pose_param=pose_test_val[j],
+                    exp_param=exp_test_val[j],
+                    color_param=color_test_val[j],
+                    illum_param=illum_test_val[j],
+                    tex_param=tex_test_val[j],
+                    landmark_param=landmark_test_val[j],
+                    landmark_groundtruth=landmark_test_val[j],
                     save_eval_to_folder=save_eval_to_folder,
                     epoch=epoch,
                     batch_id=batch_id,
                     image_id=j
                 )
 
-                ## render with estimated data
-                # save_rendered_image_for_eval(
-                #     image=images[j],
-                #     bfm=bfm,
-                #     render_image_size=render_image_size,
-                #     original_image_size=original_image_size,
-                #     shape_test_est=shape_test_est,
-                #     pose_test_est=pose_test_est,
-                #     exp_test_est=exp_test_est,
-                #     color_test_est=color_test_est,
-                #     illum_test_est=illum_test_est,
-                #     tex_test_est=tex_test_est,
-                #     landmark_test_est=landmark_test_est,
-                #     save_eval_to_folder=save_eval_to_folder,
-                #     epoch = epoch,
-                #     batch_id = batch_id,
-                #     image_id = j
-                # )
     print('======= epoch = {0}, batch={1}'.format(epoch, batch_id))
     print('shape loss: %5f' % shape_test_loss)
     print('pose loss: %5f' % pose_test_loss)
