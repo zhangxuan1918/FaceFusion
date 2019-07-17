@@ -3,18 +3,16 @@ import tensorflow as tf
 weight_decay = 1e-4
 
 
-class IdentityBlock(keras.Model):
+class IdentityBlock(keras.layers.Layer):
 
     def __init__(self, kernel_size: int, filters: list, stage: int, block: int, stride=1, trainable=True):
         super(IdentityBlock, self).__init__()
         filters1, filters2, filters3 = filters
         bn_axis = 3
-        self.out_channel = filters3
         self.stride = stride
 
         conv_name_1 = 'conv{stage}_{block}_1x1_reduce'.format(stage=stage, block=block)
         bn_name_1 = 'conv{stage}_{block}_1x1_reduce/bn'.format(stage=stage, block=block)
-
         self.conv1 = keras.layers.Conv2D(
             filters1,
             kernel_size=(1, 1),
@@ -86,20 +84,12 @@ class IdentityBlock(keras.Model):
         x = self.act3(x)
         return x
 
-    def compute_output_shape(self, input_shape):
-        shape = tf.TensorShape(input_shape).as_list()
-        shape[1] = shape[1] // self.stride
-        shape[2] = shape[2] // self.stride
-        shape[-1] = self.out_channel
-        return tf.TensorShape(shape)
 
-
-class ConvBlock(keras.Model):
+class ConvBlock(keras.layers.Layer):
     def __init__(self, kernel_size: int, filters: list, stage: int, block: int, stride=2, trainable=True):
         super(ConvBlock, self).__init__()
         filters1, filters2, filters3 = filters
         bn_axis = 3
-        self.output_channel = filters3
         self.stride = stride
 
         conv_name_1 = 'conv{stage}_{block}_1x1_reduce'.format(stage=stage, block=block)
@@ -196,13 +186,6 @@ class ConvBlock(keras.Model):
 
         return x
 
-    def compute_output_shape(self, input_shape):
-        shape = tf.TensorShape(input_shape).as_list()
-        shape[1] = shape[1] // self.stride
-        shape[2] = shape[2] // self.stride
-        shape[-1] = self.out_channel
-        return tf.TensorShape(shape)
-
 
 class Resnet50(keras.Model):
 
@@ -293,8 +276,3 @@ class Resnet50(keras.Model):
         x = self.dim_proj(x)
 
         return x
-
-    def compute_output_shape(self, input_shape):
-        batch, _, _, _ = tf.TensorShape(input_shape).as_list()
-
-        return tf.TensorShape([batch, 512])
