@@ -5,10 +5,10 @@ from distutils.dir_util import copy_tree
 import tensorflow as tf
 from tensorflow.python import keras
 from tensorflow.python.data.experimental import AUTOTUNE
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.data_tools.data_generator import get_3dmm_fine_tune_labeled_data_split
-from project_code.models.networks_3dmm import Face3DMM
-from project_code.morphable_model.model.morphable_model import MorphableModel
+from project_code.models.networks_linear_3dmm import Face3DMM
 from project_code.training.eval import update_tf_summary
 from project_code.training.train_helper import supervised_3dmm_train_one_step, supervised_3dmm_test
 
@@ -191,17 +191,17 @@ if __name__ == '__main__':
     yyyy_mm_dd = datetime.datetime.today().strftime('%Y-%m-%d')
 
     # path to load bfm model
-    bfm_mat_path = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat'
+    bfm_mat_path = '../../data/3dmm/BFM/BFM.mat'
     # path to load 3dmm data
     data_root_folder = 'H:/300W-LP/300W_LP/'
     # path to load trained model, can be vgg2 model or face model
-    model_folder = 'G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190610/'
+    model_folder = './../data/pretrained_model/20190610/'
     # folder to save model, eval and summary
-    save_to_folder = 'G:\PycharmProjects\FaceFusion\project_code\data\supervised_3dmm_model\{0}'.format(
+    save_to_folder = './../data//facenet_model/{0}'.format(
         yyyy_mm_dd
     )
 
-    bfm = MorphableModel(bfm_mat_path)
+    bfm = TfMorphableModel(bfm_mat_path)
 
     supervised_3dmm_train(
         data_root_folder=data_root_folder,

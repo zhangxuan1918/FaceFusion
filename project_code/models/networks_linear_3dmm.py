@@ -4,7 +4,7 @@ import tensorflow as tf
 from project_code.models.networks_resnet50 import Resnet50
 
 
-class Face3DMM(keras.Model):
+class FaceLinear3DMM(keras.Model):
 
     def __init__(self,
                  size_illum_param: int = 10,
@@ -47,11 +47,11 @@ class Face3DMM(keras.Model):
         return self.split_output(x)
 
     def split_output(self, output):
-        x_illum = tf.expand_dims(output[0: self.output_meta[1]], axis=0)
-        x_color = tf.expand_dims(output[self.output_meta[1]: self.output_meta[2]], axis=0)
-        x_tex = tf.expand_dims(output[self.output_meta[2]: self.output_meta[3]], axis=1)
-        x_shape = tf.expand_dims(output[self.output_meta[3]: self.output_meta[4]], axis=1)
-        x_exp = tf.expand_dims(output[self.output_meta[4]: self.output_meta[5]], axis=1)
-        x_pose = tf.expand_dims(output[self.output_meta[5]: self.output_meta[6]], axis=0)
+        x_illum = tf.expand_dims(output[:, 0: self.output_meta[1]], axis=1)
+        x_color = tf.expand_dims(output[:, self.output_meta[1]: self.output_meta[2]], axis=1)
+        x_tex = tf.expand_dims(output[:, self.output_meta[2]: self.output_meta[3]], axis=2)
+        x_shape = tf.expand_dims(output[:, self.output_meta[3]: self.output_meta[4]], axis=2)
+        x_exp = tf.expand_dims(output[:, self.output_meta[4]: self.output_meta[5]], axis=2)
+        x_pose = tf.expand_dims(output[:, self.output_meta[5]: self.output_meta[6]], axis=1)
 
         return x_illum, x_color, x_tex, x_shape, x_exp, x_pose

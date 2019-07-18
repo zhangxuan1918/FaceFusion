@@ -1,4 +1,4 @@
-from project_code.models.networks_3dmm import Face3DMM
+from project_code.models.networks_linear_3dmm import Face3DMM
 
 face_model = Face3DMM()
 face_model.build(input_shape=(None, 224, 224, 3))

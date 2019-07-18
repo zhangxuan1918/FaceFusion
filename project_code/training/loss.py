@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def loss_norm(est, label, loss_type):
+def norm_loss(est, label, loss_type):
     """
     compute l1 or l2 loss
     :param est: estimations
