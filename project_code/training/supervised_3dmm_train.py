@@ -7,7 +7,7 @@ from tensorflow.python import keras
 from tensorflow.python.data.experimental import AUTOTUNE
 
 from project_code.data_tools.data_generator import get_3dmm_fine_tune_labeled_data_split
-from project_code.models.networks_3dmm import Face3DMM
+from project_code.models.networks_linear_3dmm import Face3DMM
 from project_code.morphable_model.model.morphable_model import MorphableModel
 from project_code.training.eval import update_tf_summary
 from project_code.training.train_helper import supervised_3dmm_train_one_step, supervised_3dmm_test

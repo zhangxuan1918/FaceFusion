@@ -1,4 +1,4 @@
-from project_code.models.networks_3dmm import Face3DMM
+from project_code.models.networks_linear_3dmm import Face3DMM
 import tensorflow as tf
 
 checkpoint_dir = 'G:/PycharmProjects/FaceFusion/project_code/data/pretrained_model/20190608/'

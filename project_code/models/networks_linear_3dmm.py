@@ -1,7 +1,71 @@
+import os
+
+import numpy as np
 from tensorflow.python import keras
 import tensorflow as tf
 from project_code.models.networks_resnet50 import Resnet50, resnet50_backend
 
+
+class FaceNetLinear3DMM:
+
+    def __init__(self, config):
+        self.batch_size = config.batch_size
+        self.image_size = 224
+        self.rendered_image_size = 450
+
+        self.is_using_warmup = config.is_using_warmup
+
+        self.loss_warmup_type = config.warmup_loss_type if hasattr(config, 'warmup_loss_type') else 'l2'
+        self.loss_recon_type = config.recon_loss_type if hasattr(config, 'recon_loss_type') else 'l2'
+
+        self.dim_illum = config.size_illum_param if hasattr(config, 'dim_illum') else 10
+        self.dim_color = config.size_color_param if hasattr(config, 'dim_color') else 7
+        self.dim_tex = config.size_tex_param if hasattr(config, 'dim_tex') else 199
+        self.dim_shape = config.size_shape_param if hasattr(config, 'dim_shape') else 199
+        self.dim_exp = config.size_exp_param if hasattr(config, 'dim_exp') else 29
+        self.dim_pose = config.size_pose_param if hasattr(config, 'dim_pose') else 7
+
+        self.output_size_structure = list(np.cumsum([
+            self.dim_illum,
+            self.dim_color,
+            self.dim_tex,
+            self.dim_shape,
+            self.dim_exp,
+            self.dim_pose
+        ]))
+
+        self.checkpoint_dir = config.checkout_dir
+        self.resnet_weights_dir = config.resnet_weights_dir
+        self.save_dir = config.save_dir
+        self.model_dir = os.path.join(self.save_dir, 'model')
+        self.eval_dir = os.path.join(self.save_dir, 'eval')
+
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+        if not os.path.exists(self.eval_dir):
+            os.makedirs(self.eval_dir)
+
+        self.build()
+
+    def build(self):
+        self.resnet = resnet50_backend(tf.zeros([None, self.image_size, self.image_size, 3]))
+        self.dense = keras.layers.Dense(units=self.output_size_structure[-1], name='3dmm_dense')
+        self.model = keras.Sequential([self.resnet, self.dense])
+
+    def summary(self):
+        print(self.model.summary())
+
+    def setup_3dmm_data(self):
+        pass
+
+    def _train_3dmm_warmup(self):
+        train_ds, test_ds = self.setup_3dmm_data()
+        self._load_resnet_weights()
+
+    def train(self):
+        if self.is_using_warmup:
+            # use supervised learning
+            self._train_3dmm_warmup()
 
 def facenet(inputs, backend='resnet50'):
 
