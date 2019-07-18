@@ -3,69 +3,144 @@ import os
 import numpy as np
 from tensorflow.python import keras
 import tensorflow as tf
-from project_code.models.networks_resnet50 import Resnet50, resnet50_backend
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+
+from project_code.models.networks_resnet50 import Resnet50, resnet50_backend, Resnet
 
 
 class FaceNetLinear3DMM:
 
-    def __init__(self, config):
-        self.batch_size = config.batch_size
+    def __init__(self, config_general, config_train_warmup, config_train):
+        """
+
+        :param config_general:
+             is_using_warmup: boolean
+             dim_illum: 10
+             dim_color: 7
+             dim_tex: 199
+             dim_shape: 199
+             dim_exp: 29
+             dim_pose: 7
+
+             checkout_dir: string
+             bfm_dir
+
+        :param config_train_warmup:
+            loss_type: 'l2' or 'l1'
+            face_vgg_v2_path: string
+            log_freq: int
+            loss_shape_type: string, optional, default l2
+            loss_pose_type: string, optional, default l2
+            loss_exp_type: string, optional, default l2
+            loss_color_type: string, optional, default l2
+            loss_illum_type: string, optional, default l2
+            loss_tex_type: string, optional, default l2
+            loss_landmark_type: string, optional, default l2
+
+        :param config_train:
+            loss_type: 'l2' or 'l1'
+        """
+        self.config_general = config_general
+        self.config_train_warmup = config_train_warmup
+        self.config_train = config_train
+
         self.image_size = 224
-        self.rendered_image_size = 450
-
-        self.is_using_warmup = config.is_using_warmup
-
-        self.loss_warmup_type = config.warmup_loss_type if hasattr(config, 'warmup_loss_type') else 'l2'
-        self.loss_recon_type = config.recon_loss_type if hasattr(config, 'recon_loss_type') else 'l2'
-
-        self.dim_illum = config.size_illum_param if hasattr(config, 'dim_illum') else 10
-        self.dim_color = config.size_color_param if hasattr(config, 'dim_color') else 7
-        self.dim_tex = config.size_tex_param if hasattr(config, 'dim_tex') else 199
-        self.dim_shape = config.size_shape_param if hasattr(config, 'dim_shape') else 199
-        self.dim_exp = config.size_exp_param if hasattr(config, 'dim_exp') else 29
-        self.dim_pose = config.size_pose_param if hasattr(config, 'dim_pose') else 7
 
         self.output_size_structure = list(np.cumsum([
-            self.dim_illum,
-            self.dim_color,
-            self.dim_tex,
-            self.dim_shape,
-            self.dim_exp,
-            self.dim_pose
+            self.config_general.dim_illum,
+            self.config_general.dim_color,
+            self.config_general.dim_tex,
+            self.config_general.dim_shape,
+            self.config_general.dim_exp,
+            self.config_general.dim_pose
         ]))
 
-        self.checkpoint_dir = config.checkout_dir
-        self.resnet_weights_dir = config.resnet_weights_dir
-        self.save_dir = config.save_dir
+        self.checkpoint_dir = self.config_general.checkout_dir
+        self.save_dir = self.config_general.save_dir
+        self.model_dir_warm_up = os.path.join(self.save_dir, 'model_warm_up')
+        self.eval_dir_warm_up = os.path.join(self.save_dir, 'eval_warm_up')
+        self.log_dir_warm_up = os.path.join(self.save_dir, 'log_warm_up')
         self.model_dir = os.path.join(self.save_dir, 'model')
         self.eval_dir = os.path.join(self.save_dir, 'eval')
+        self.log_dir = os.path.join(self.save_dir, 'log')
 
-        if not os.path.exists(self.model_dir):
+        if not os.path.exists(self.model_dir_warm_up):
+            os.makedirs(self.model_dir_warm_up)
+        if not os.path.exists(self.eval_dir_warm_up):
+            os.makedirs(self.eval_dir_warm_up)
+        if not os.path.exists(self.model_dir_warm_up):
             os.makedirs(self.model_dir)
-        if not os.path.exists(self.eval_dir):
+        if not os.path.exists(self.eval_dir_warm_up):
             os.makedirs(self.eval_dir)
+        if not os.path.exists(self.log_dir_warm_up):
+            os.makedirs(self.log_dir_warm_up)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
         self.build()
 
     def build(self):
-        self.resnet = resnet50_backend(tf.zeros([None, self.image_size, self.image_size, 3]))
+        self.resnet50 = Resnet(image_size=self.image_size)
         self.dense = keras.layers.Dense(units=self.output_size_structure[-1], name='3dmm_dense')
-        self.model = keras.Sequential([self.resnet, self.dense])
+        self.model = keras.Sequential([self.resnet50.model, self.dense])
+        self.bfm = TfMorphableModel(model_path=self.config_general.bfm_dir)
+
+    def __call__(self, inputs, training=True):
+        output = self.model(inputs)
+        x_illum = tf.expand_dims(output[:, 0: self.output_size_structure[1]], axis=1)
+        x_color = tf.expand_dims(output[:, self.output_size_structure[1]: self.output_size_structure[2]], axis=1)
+        x_tex = tf.expand_dims(output[:, self.output_size_structure[2]: self.output_size_structure[3]], axis=2)
+        x_shape = tf.expand_dims(output[:, self.output_size_structure[3]: self.output_size_structure[4]], axis=2)
+        x_exp = tf.expand_dims(output[:, self.output_size_structure[4]: self.output_size_structure[5]], axis=2)
+        x_pose = tf.expand_dims(output[:, self.output_size_structure[5]: self.output_size_structure[6]], axis=1)
+
+        return {
+            'illum': x_illum,
+            'color': x_color,
+            'tex': x_tex,
+            'shape': x_shape,
+            'exp': x_exp,
+            'pose': x_pose
+        }
 
     def summary(self):
         print(self.model.summary())
 
-    def setup_3dmm_data(self):
-        pass
+    def setup_3dmm_model(self):
+        ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
+        manager = tf.train.CheckpointManager(ckpt, self.checkpoint_dir, max_to_keep=self.config_general.max_checkpoint_to_keep)
+        ckpt.restore(manager.latest_checkpoint)
 
-    def _train_3dmm_warmup(self):
-        train_ds, test_ds = self.setup_3dmm_data()
-        self._load_resnet_weights()
+        if manager.latest_checkpoint:
+            print('restored from {}'.format(manager.latest_checkpoint))
+        else:
+            print('load face vgg2 pretrained weights for resnet50')
+            self.resnet50.load_pretrained(self.config_train_warmup.face_vgg_v2_path)
+        self.resnet50.freeze()
 
-    def train(self):
-        if self.is_using_warmup:
+        return ckpt, manager
+
+    def _train_3dmm_warmup(self, numof_epochs):
+
+        ckpt, manager = self.setup_3dmm_model()
+
+        self.summary()
+
+        train_3dmm_warmup(
+            numof_epochs=numof_epochs,
+            ckpt=ckpt,
+            manager=manager,
+            face_model=self,
+            bfm=self.bfm,
+            config=self.config_train_warmup,
+            log_dir=self.log_dir_warm_up,
+            eval_dir=self.eval_dir_warm_up
+        )
+
+    def train(self, numof_epochs_warmup, numof_epochs):
+        if self.config_general.is_using_warmup:
             # use supervised learning
-            self._train_3dmm_warmup()
+            self._train_3dmm_warmup(numof_epochs_warmup)
 
 def facenet(inputs, backend='resnet50'):
 
@@ -129,7 +204,7 @@ class Face3DMMLinear:
 
     def build(self, inputs):
 
-        self.trunk = resnet50_backend(inputs=inputs)
+        self.resnet50 = Resnet(batch_size=self.batch_size, )
 
         self.head_illum = keras.layers.Dense(units=self.size_illum_param, name='head_illum')
         self.head_color = keras.layers.Dense(units=self.size_color_param, name='head_color')

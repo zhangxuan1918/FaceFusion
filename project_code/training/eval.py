@@ -6,11 +6,6 @@ from project_code.data_tools.data_util import recover_3dmm_params
 from project_code.morphable_model.mesh.visualize import render_and_save
 
 
-def update_tf_summary(var_name, metric, step):
-    tf.summary.scalar(var_name, metric.result(), step=step)
-    metric.reset_states()
-
-
 def save_rendered_image_for_eval(
         image,
         bfm,

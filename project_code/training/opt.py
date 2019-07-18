@@ -1,79 +1,248 @@
+import os
+
 import numpy as np
 import tensorflow as tf
-
-from project_code.morphable_model import mesh
-from project_code.morphable_model.model.morphable_model import MorphableModel
-from project_code.training.tf_util import get_shape
-bfm_mat_path = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat'
-bfm = MorphableModel(bfm_mat_path)
+from tf_3dmm.mesh.render import render_2
+from tf_3dmm.mesh.transform import affine_transform
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+import matplotlib.pyplot as plt
 
 
-def split_3dmm_labels(labels):
+def split_3dmm_labels(values):
     """
     split labels into different 3dmm params
-    :param labels:
+    :param values:
     :return:
     """
     # get different labels
-    # Shape_Para: (199,)
-    # Pose_Para: (7,)
-    # Exp_Para: (29,)
-    # Color_Para: (7,)
-    # Illum_Para: (10,)
-    # pt2d: (136, )
-    # Tex_Para: (199,)
-    n_size = labels.shape[0]
-    shape_labels = labels[:, :199]
-    pose_labels = labels[:, 199: 206]
-    exp_labels = labels[:, 206: 235]
-    color_labels = labels[:, 235: 242]
-    illum_labels = labels[:, 242: 252]
+    # Shape_Para: [batch, 199, 1)
+    # Pose_Para: [batch, 1, 7]
+    # Exp_Para: [batch, 29, 1]
+    # Color_Para: [batch, 7, 1]
+    # Illum_Para: [batch, 1, 10]
+    # pt2d: (batch, 2, 68]
+    # Tex_Para: [batch, 199, 1]
+
+    shape_gt = tf.expand_dims(values[:, 0:199], axis=2)
+    pose_gt = tf.expand_dims(values[:, 199: 206], axis=1)
+    exp_gt = tf.expand_dims(values[:, 206: 235], axis=2)
+    color_gt = tf.expand_dims(values[:, 235: 242], axis=1)
+    illum_gt = tf.expand_dims(values[:, 242: 252], axis=1)
     # reshape landmark
-    landmark_labels = tf.reshape(labels[:, 252: 388], (-1, 2, 68))
-    tex_labels = labels[:, 388:]
+    landmark_gt = tf.reshape(values[:, 252: 388], (-1, 2, 68))
+    tex_gt = tf.expand_dims(values[:, 388:], axis=2)
 
-    return shape_labels, pose_labels, exp_labels, color_labels, illum_labels, landmark_labels, tex_labels
+    return {
+        'shape': shape_gt,
+        'pose': pose_gt,
+        'exp': exp_gt,
+        'color': color_gt,
+        'illum': illum_gt,
+        'tex': landmark_gt,
+        'landmark': tex_gt,
+    }
 
 
-def compute_landmarks(poses_param, shapes_param, exps_param, output_size=224):
-    """
-    compute landmarks using pose, shape and expression params
-    note, now we compute it in numpy instead of tensor, can be problem for performance
+def compute_landmarks(
+        poses_param,
+        shapes_param,
+        exps_param,
+        bfm: TfMorphableModel
+):
+    start = 0
+    end = shapes_param.shape[0]
+    batch_landmarks = []
+    kpt_indices = tf.expand_dims(bfm.get_landmark_indices(), axis=1)
 
-    :param poses_param: batch pose params. (batch_size, 199) = > (batch_size, 199, 1)
-    :param shapes_param: batch shapes params. (batch_size, 7) = > (batch_size, 1, 7)
-    :param exps_param: batch expression params. (batch_size, 29) = > (batch_size, 29, 1)
-    :param bfm: 3dmm model
-    :param output_size: 2d landmarks position on image of shape (output_size, output_size)
-    :param input_size: the input size of face model, the pose params are computed with image of shape (input_size, input_size)
-    :return: tensor: shape [batch_size, 2, 68]
-    """
+    def cond(i, n):
+        return i < n
 
-    # convert tensor to numpy array
-    poses_param = np.array(poses_param).reshape((-1, 1, 7))
-    shapes_param = np.array(shapes_param).reshape((-1, 199, 1))
-    exps_param = np.array(exps_param).reshape((-1, 29, 1))
+    def body(i, n):
+        vertices = bfm.get_vertices(shapes_param[i], exps_param[i])
+        transformed_vertices = affine_transform(vertices, poses_param[i][0, 6], poses_param[i][0, 0:3],
+                                                poses_param[i][0, 3:6])
+        landmarks_raw = tf.gather_nd(transformed_vertices, kpt_indices)
+        landmarks = tf.concat(
+            [tf.expand_dims(landmarks_raw[:, 0], axis=0), 224 - tf.expand_dims(landmarks_raw[:, 1], axis=0) - 1],
+            axis=0)
+        batch_landmarks.append(landmarks)
+        return i + 1, n
 
-    n_size = poses_param.shape[0]
+    tf.while_loop(cond=cond, body=body, loop_vars=[start, end])
 
-    # Tri, tri2vt
-    landmark_indices = bfm.get_landmark_indices()
-    landmarks = []
-    for i in range(n_size):
-        pose = poses_param[i, :, :]
-        shape = shapes_param[i, :, :]
-        exp = exps_param[i, :, :]
+    final_landmarks = tf.concat(batch_landmarks, axis=0)
 
-        vertex3d = bfm.generate_vertices(shape_param=shape, exp_param=exp)
-        vertex3d_landmarks = vertex3d[landmark_indices, :]
+    tf.debugging.assert_shapes({final_landmarks: (end, 2, kpt_indices.shape()[0])})
 
-        # add scaling
-        s = pose[0, 6]
-        angles = pose[0, 0:3]
-        t = pose[0, 3:6]
+    return final_landmarks
 
-        projected_vertices = bfm.transform_3ddfa(vertices=vertex3d_landmarks, scale=s, angles=angles, t3d=t)
-        vertex2d_landmarks = mesh.transform.to_image(vertices=projected_vertices, h=output_size, w=output_size)
-        landmarks.append(vertex2d_landmarks[:, :2].T)
 
-    return np.array(landmarks)
+def render_batch(
+        batch_angles_grad,
+        batch_saling,
+        batch_t3d,
+        batch_shape,
+        batch_exp,
+        batch_tex,
+        batch_color,
+        batch_illum,
+        image_size,
+        bfm
+):
+    start = 0
+    end = batch_angles_grad.shape[0]
+    rendered = []
+
+    def cond(i, n):
+        return i < n
+
+    def body(i, n):
+        image = render_2(
+            angles_grad=batch_angles_grad[i, 0:3],
+            scaling=batch_saling[i, 6],
+            t3d=batch_t3d[i, 3:6],
+            shape_param=batch_shape[i],
+            exp_param=batch_exp[i],
+            tex_param=batch_tex[i],
+            color_param=batch_color[i],
+            illum_param=batch_illum[i],
+            frame_width=image_size,
+            frame_height=image_size,
+            tf_bfm=bfm
+        )
+        rendered.append(image)
+        return i + 1, n
+
+    tf.while_loop(cond=cond, body=body, loop_vars=[start, end])
+
+    images = tf.concat(rendered, axis=0)
+    tf.debugging.assert_shapes({images: (end, image_size, image_size, 3)})
+    return images
+
+
+def save_rendered_images_for_warmup_eval(
+        bfm: TfMorphableModel,
+        gt,
+        est,
+        image_size,
+        eval_dir,
+        batch_id,
+        num_images_to_render=4,
+        max_images_in_dir=10,
+):
+    clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
+
+    images_gt = render_batch(
+        batch_angles_grad=gt['pos'][0:num_images_to_render, 0:3],
+        batch_saling=gt['pose'][0:num_images_to_render, 6],
+        batch_t3d=gt['pose'][0:num_images_to_render, 3:6],
+        batch_shape=gt['shape'][0:num_images_to_render],
+        batch_exp=gt['exp'][0:num_images_to_render],
+        batch_tex=gt['tex'][0:num_images_to_render],
+        batch_color=gt['color'][0:num_images_to_render],
+        batch_illum=gt['illum'][0:num_images_to_render],
+        image_size=image_size,
+        bfm=bfm
+    )
+
+    images_est = render_batch(
+        batch_angles_grad=est['pos'][0:num_images_to_render, 0:3],
+        batch_saling=est['pose'][0:num_images_to_render, 6],
+        batch_t3d=est['pose'][0:num_images_to_render, 3:6],
+        batch_shape=est['shape'][0:num_images_to_render],
+        batch_exp=est['exp'][0:num_images_to_render],
+        batch_tex=est['tex'][0:num_images_to_render],
+        batch_color=est['color'][0:num_images_to_render],
+        batch_illum=est['illum'][0:num_images_to_render],
+        image_size=image_size,
+        bfm=bfm
+    )
+
+    for i in range(num_images_to_render):
+        image_gt = images_gt[i].numpy().astype(np.uint8)
+
+        image_est = images_est[i].numpy().astype(np.uint8)
+
+        filename = os.path.join(eval_dir, '{batch_id}_rendered.jpg'.format(batch_id=batch_id))
+        save_images(
+            images=[image_gt, image_est],
+            landmarks=[gt['landmark'][i].numpy(), est['landmark'][i].numpy()],
+            titles=['ground_truth', 'estimation'],
+            filename=filename
+        )
+
+
+def save_rendered_images_for_eval(
+        images,
+        rendered_images,
+        landmarks,
+        eval_dir,
+        batch_id,
+        num_images_to_render=4,
+        max_images_in_dir=10,
+):
+    clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
+
+    for i in range(num_images_to_render):
+        image_gt = images[i].numpy().astype(np.uint8)
+
+        image_est = rendered_images[i].numpy().astype(np.uint8)
+
+        filename = os.path.join(eval_dir, '{batch_id}_rendered.jpg'.format(batch_id=batch_id))
+        save_images(
+            images=[image_gt, image_est],
+            landmarks=[None, landmarks[i]],
+            titles=['ground_truth', 'estimation'],
+            filename=filename
+        )
+
+
+def clean_up(data_folder, max_num_files):
+    # only keep 10 results
+
+    files = os.listdir(data_folder)
+    if len(files) <= max_num_files:
+        return
+
+    files = [os.path.join(data_folder, basename) for basename in files]
+    files.sort(key=os.path.getctime)
+    files = files[0: -max_num_files]
+    for file in files:
+        os.remove(file)
+
+
+def save_images(images, filename, titles, landmarks=None):
+    n = len(images)
+    if landmarks is None:
+        landmarks = [None] * n
+
+    fig = plt.figure()
+
+    for i in range(n):
+        im = images[i]
+        t = titles[i]
+        lm = landmarks[i]
+
+        ax = fig.add_subplot(1, n, i + 1)
+        ax.imshow(im)
+        if lm is not None:
+            ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 17:22], lm[1, 17:22], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 22:27], lm[1, 22:27], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 27:31], lm[1, 27:31], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 31:36], lm[1, 31:36], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 36:42], lm[1, 36:42], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 42:48], lm[1, 42:48], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 48:60], lm[1, 48:60], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+            ax.plot(lm[0, 60:68], lm[1, 60:68], marker='o', markersize=2, linestyle='-',
+                    color='w', lw=2)
+
+        plt.savefig(filename)

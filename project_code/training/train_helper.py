@@ -58,7 +58,7 @@ def supervised_3dmm_train_one_step(
 
     # get different labels
     shape_train_val, pose_train_val, exp_train_val, color_train_val, illum_train_val, landmark_train_val, tex_train_val = \
-        split_3dmm_labels(labels=labels)
+        split_3dmm_labels(values=labels)
 
     with tf.GradientTape() as shape_tape, \
             tf.GradientTape() as pose_tape, \
@@ -174,22 +174,22 @@ def supervised_3dmm_test(
             print('test batch {0}'.format(k))
         images, labels = value
         shape_test_val, pose_test_val, exp_test_val, color_test_val, illum_test_val, landmark_test_val, tex_test_val = \
-            split_3dmm_labels(labels=labels)
+            split_3dmm_labels(values=labels)
 
         illum_test_est, color_test_est, tex_test_est, shape_test_est, exp_test_est, pose_test_est = \
             face_model(images, training=False)
 
-        shape_test_loss += loss_norm(label=shape_test_val, est=shape_test_est,
+        shape_test_loss += loss_norm(gt=shape_test_val, est=shape_test_est,
                                      loss_type=face_model.get_shape_loss_type())
-        pose_test_loss += loss_norm(label=pose_test_val, est=pose_test_est,
+        pose_test_loss += loss_norm(gt=pose_test_val, est=pose_test_est,
                                     loss_type=face_model.get_pose_loss_type())
-        exp_test_loss += loss_norm(label=exp_test_val, est=exp_test_est,
+        exp_test_loss += loss_norm(gt=exp_test_val, est=exp_test_est,
                                    loss_type=face_model.get_exp_loss_type())
-        color_test_loss += loss_norm(label=color_test_val, est=color_test_est,
+        color_test_loss += loss_norm(gt=color_test_val, est=color_test_est,
                                      loss_type=face_model.get_color_loss_type())
-        illum_test_loss += loss_norm(label=illum_test_val, est=illum_test_est,
+        illum_test_loss += loss_norm(gt=illum_test_val, est=illum_test_est,
                                      loss_type=face_model.get_illum_loss_type())
-        tex_test_loss += loss_norm(label=tex_test_val, est=tex_test_est,
+        tex_test_loss += loss_norm(gt=tex_test_val, est=tex_test_est,
                                    loss_type=face_model.get_tex_loss_type())
 
         landmark_test_est = compute_landmarks(
@@ -199,7 +199,7 @@ def supervised_3dmm_test(
             bfm=bfm,
             output_size=input_image_size
         )
-        landmark_test_loss += loss_norm(label=landmark_test_val, est=landmark_test_est,
+        landmark_test_loss += loss_norm(gt=landmark_test_val, est=landmark_test_est,
                                         loss_type=face_model.get_landmark_loss_type())
 
         if batch_id % 5000 == 0 and k == 0:

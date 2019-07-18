@@ -127,9 +127,8 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2),
 
 class Resnet:
 
-    def __init__(self, image_size, batch_size):
+    def __init__(self, image_size):
         self.image_size = image_size
-        self.batch_size = batch_size
 
     def build(self):
         inputs = Input(shape=[self.image_size, self.image_size, 3], name='image_input')
@@ -141,7 +140,6 @@ class Resnet:
         x = Dense(512, activation='relu', name='dim_proj')(x)
 
         self.model = Model(inputs=inputs, outputs=x)
-        # self.model.build()
 
     def summary(self):
         print(self.model.summary())
@@ -234,7 +232,7 @@ class Resnet:
 
 
 if __name__ == '__main__':
-    resnet50 = Resnet(image_size=224, batch_size=4)
+    resnet50 = Resnet(image_size=224)
     resnet50.build()
     resnet50.load_pretrained(weights_path='/opt/project/project_code/data/pretrained_model/20190718/weights.h5')
     resnet50.summary()
