@@ -38,6 +38,9 @@ class FaceNetLinear3DMM:
             loss_illum_type: string, optional, default l2
             loss_tex_type: string, optional, default l2
             loss_landmark_type: string, optional, default l2
+            data_train_dir: /opt/data/300W_LP
+            data_test_dir: /opt/data/AFLW2000
+            data_mean_std: /opt/data/300W_LP_stats/stats_300W_LP.npz
 
         :param config_train:
             loss_type: 'l2' or 'l1'

@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.python import keras
 from tensorflow.python.data.experimental import AUTOTUNE
 
-from project_code.data_tools.data_generator import get_3dmm_fine_tune_labeled_data_split
+from project_code.data_tools.data_generator import get_3dmm_warmup_data
 from project_code.models.networks_linear_3dmm import Face3DMM
 from project_code.morphable_model.model.morphable_model import MorphableModel
 from project_code.training.eval import update_tf_summary
@@ -44,9 +44,9 @@ def create_train_fine_tuning_folder(save_to_folder, model_folder=None):
 
 def create_3dmm_data_pipeline(data_root_folder, batch_size):
     # load training dataset
-    train_image_label_ds, test_image_label_ds = get_3dmm_fine_tune_labeled_data_split(
-        data_root_folder=data_root_folder,
-        suffix='*/*.jpg',
+    train_image_label_ds, test_image_label_ds = get_3dmm_warmup_data(
+        data_train_dir=data_root_folder,
+        image_suffix='*/*.jpg',
         test_data_ratio=0.01
     )
 

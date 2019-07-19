@@ -2,92 +2,100 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 
-from project_code.data_tools.data_const import keys_3dmm_params
+params_mean_var = np.load('/project/opt/project_code/data/3dmm/300W_LP_mean_var/stats_300W_LP.npz')
+params_mean_var['Pose_Para_mean'][:, 3:] = params_mean_var['Pose_Para_mean'] * 224. / 450.
+params_mean_var['Pose_Para_std'][:, 3:] = params_mean_var['Pose_Para_std'] * 224. / 450.
 
-params_mean_var = np.load('G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_mean_var\stats_300W_LP.npz')
 
-
-def load_image_3dmm(image_file, output_size=224):
+def load_image_3dmm(image_files):
     """
     load and preprocess images for 3dmm
     original image size (450, 450)
     we need to scale down image to (224, 224)
-    :param image_file:
+    :param image_files:
     :return:
     """
 
-    image = tf.io.read_file(image_file)
+    image = tf.io.read_file(image_files)
     image = tf.image.decode_jpeg(image, channels=3)
 
     # resize image from (450, 450) to (224, 224)
-    image = tf.image.resize(image, [output_size, output_size])
+    image = tf.image.resize(image, [224, 224])
     # normalize image to [-1, 1]
     image = (image / 127.5) - 1
     return image
 
 
-def load_labels_3dmm(label_file, image_original_size=450, image_rescaled_size=224):
+def load_mat_3dmm(data_name, mat_files):
     """
     load labels for image
     we rescale image from size (450, 450) to (224, 224)
     we need to adapt the 3dmm params
 
-    # Shape_Para: shape=(199, 1) => (199,)
-    # Pose_Para: shape=(1, 7) => (7,)
-    # Exp_Para: shape=(29, 1) => (29,)
-    # Color_Para: shape=(1, 7) => (7,)
-    # Illum_Para: shape=(1, 10) => (10,)
-    # pt2d: shape=(2, 68) => (2, 68)
-        flatten to (136, )
-    # Tex_Para: shape=(199, 1) => (199,)
+    300W_LP data set
+        # Shape_Para: shape=(199, 1) => (199,)
+        # Pose_Para: shape=(1, 7) => (7,)
+        # Exp_Para: shape=(29, 1) => (29,)
+        # Color_Para: shape=(1, 7) => (7,)
+        # Illum_Para: shape=(1, 10) => (10,)
+        # pt2d: shape=(2, 68) => (2, 68)
+            flatten to (136, )
+        # Tex_Para: shape=(199, 1) => (199,)
+
+    AFLW_200 data set
+        # Shape_Para: shape=(199, 1) => (199,)
+        # Pose_Para: shape=(1, 7) => (7,)
+        # Exp_Para: shape=(29, 1) => (29,)
+        # Color_Para: shape=(1, 7) => (7,)
+        # Illum_Para: shape=(1, 10) => (10,)
+        # pt3d_68: shape=(3, 68) => (2, 68)
+            flatten to (136, )
+        # Tex_Para: shape=(199, 1) => (199,)
 
     total params: 587
+
+
+
+    :param: data_name
     :param: label_file:
     :param: image_original_size: 450
     :param: image_rescaled_size: 224
     :return: label of shape (587, )
     """
 
-    def _read_mat(label_file):
-        mat_contents = sio.loadmat(label_file.numpy())
+    def _read_mat(mat_file):
+        mat_data = sio.loadmat(mat_file.numpy())
 
-        labels = []
-        scale_ratio = 1.0 * image_rescaled_size / image_original_size
+        sp = mat_data['Shape_Para']
+        ep = mat_data['Exp_Para']
+        tp = mat_data['Tex_Para']
+        cp = mat_data['Color_Para']
+        ip = mat_data['Illum_Para']
+        pp = mat_data['Pose_Para']
 
-        for key in keys_3dmm_params:
-            value = mat_contents[key]
-            if key == 'pt2d':
-                # for landmark we just normalize by image size
-                value = np.reshape(value, (-1, 1))
-                value *= scale_ratio
-            elif key == 'Pose_param':
-                # mean
-                value_mean = params_mean_var[key + '_mean']
-                # std
-                value_var = params_mean_var[key + '_var']
-                # rescale pose param as the image is rescaled
-                value[0, 3:] = value[0, 3:] * scale_ratio
-                value_mean[0, 3:] = value_mean[0, 3:] * scale_ratio
-                value_var[0, 3:] = value_var[0, 3:] * scale_ratio
-                value = np.divide(np.subtract(value, value_mean), value_var)
-            else:
-                # mean
-                value_mean = params_mean_var[key + '_mean']
-                # std
-                value_var = params_mean_var[key + '_var']
-                value = np.divide(np.subtract(value, value_mean), value_var)
-            labels.append(tf.squeeze(tf.convert_to_tensor(value, dtype=tf.float32)))
+        if data_name == '300W_LP':
+            lm = mat_data['pt2d']
+        elif data_name == 'AFLW_2000':
+            lm = mat_data['pt3d_68'][0:2, :]
+        else:
+            raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 
-        labels_flatten = tf.concat(labels, axis=0)
-        return labels_flatten
+        # normalize data
+        sp = np.divide(np.subtract(sp, params_mean_var['Shape_Para_mean']), params_mean_var['Shape_Para_std'])
+        ep = np.divide(np.subtract(ep, params_mean_var['Exp_Para_mean']), params_mean_var['Exp_Para_std'])
+        tp = np.divide(np.subtract(tp, params_mean_var['Tex_Para_mean']), params_mean_var['Tex_Para_std'])
+        cp = np.divide(np.subtract(cp, params_mean_var['Color_Para_mean']), params_mean_var['Color_Para_std'])
+        ip = np.divide(np.subtract(ip, params_mean_var['Illum_Para_mean']), params_mean_var['Illum_Para_std'])
+        pp = np.divide(np.subtract(pp, params_mean_var['Pose_Para_mean']), params_mean_var['Pose_Para_std'])
 
-    labels = tf.py_function(_read_mat, [label_file], tf.float32)
-    labels.set_shape((587,))
-    return labels
+        return sp, ep, tp, cp, ip, pp, lm
+
+    gt = tf.py_function(_read_mat, [mat_files], [tf.float32] * 7)
+    return gt
 
 
-def load_image_labels_3dmm(image_file, label_file):
-    return load_image_3dmm(image_file=image_file), load_labels_3dmm(label_file=label_file)
+def load_3dmm_data(data_name, image_files, mat_files):
+    return load_image_3dmm(image_files=image_files), load_mat_3dmm(data_name=data_name, mat_files=mat_files)
 
 
 def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,

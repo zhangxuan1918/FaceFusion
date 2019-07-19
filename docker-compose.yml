@@ -9,3 +9,5 @@ services:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
       - face_fusion.env
+    volumes:
+      - /home/xuan/Projects/data/face_fuse:/opt/data/

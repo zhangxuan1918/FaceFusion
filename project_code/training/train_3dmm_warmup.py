@@ -5,7 +5,7 @@ from project_code.models.networks_linear_3dmm import FaceNetLinear3DMM
 from project_code.training.data import setup_3dmm_warmup_data
 from project_code.training.log import setup_summary
 from project_code.training.loss import loss_3dmm_warmup
-from project_code.training.opt import split_3dmm_labels, compute_landmarks, save_rendered_images_for_warmup_eval
+from project_code.training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
 
 
 def train_3dmm_warmup(
@@ -21,7 +21,11 @@ def train_3dmm_warmup(
     train_summary_writer, metric_train, test_summary_writer, metric_test = setup_summary(
         log_dir=log_dir
     )
-    train_ds, test_ds = setup_3dmm_warmup_data()
+    train_ds, test_ds = setup_3dmm_warmup_data(
+        batch_size=config.batch_size,
+        data_train_dir=config.data_train_dir,
+        data_test_dir=config.data_test_data_dir
+    )
 
     optimizer = tf.optimizers.Adam(
         learning_rate=config.learning_rate,
@@ -54,8 +58,17 @@ def train_3dmm_warmup(
                 print('warm up training: batch={0}'.format(batch_id))
 
             ckpt.step.assign_add(1)
-            images, ground_truth = value
-
+            images, shape_gt, exp_gt, tex_gt, color_gt, illum_gt, pose_gt, lm_gt = value
+            ground_truth = \
+                {
+                    'shape': shape_gt,
+                    'pose': pose_gt,
+                    'exp': exp_gt,
+                    'color': color_gt,
+                    'illum': illum_gt,
+                    'tex': tex_gt,
+                    'landmark': lm_gt,
+                }
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(
@@ -80,13 +93,12 @@ def train_3dmm_warmup(
                     test_3dmm_warmup_one_step(
                         face_model=face_model,
                         bfm=bfm,
-                        images=images,
-                        ground_truth=ground_truth,
+                        test_ds=test_ds,
                         metric=metric_test,
                         loss_types=loss_types,
                         loss_weights=loss_weights,
                         render_image_size=224,
-                        batch_id=batch_id,
+                        step_id=int(ckpt.step),
                         eval_dir=eval_dir
                     )
 
@@ -99,14 +111,11 @@ def train_3dmm_warmup_one_step(
         bfm: TfMorphableModel,
         optimizer,
         images,
-        ground_truth: dict,
+        ground_truth,
         metric: dict,
         loss_types: dict,
         loss_weights: dict
 ):
-
-    gt = split_3dmm_labels(values=ground_truth)
-
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
         est['landmark'] = compute_landmarks(
@@ -117,7 +126,7 @@ def train_3dmm_warmup_one_step(
         )
 
         G_loss = loss_3dmm_warmup(
-            gt=gt,
+            gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
@@ -132,39 +141,51 @@ def train_3dmm_warmup_one_step(
 def test_3dmm_warmup_one_step(
         face_model: FaceNetLinear3DMM,
         bfm: TfMorphableModel,
-        images,
-        ground_truth: dict,
+        test_ds,
         metric: dict,
         loss_types: dict,
         loss_weights: dict,
         render_image_size,
         eval_dir: str,
-        batch_id: int
+        step_id: int
 ):
+    G_loss = 0
+    for i, value in enumerate(test_ds):
+        images, shape_gt, exp_gt, tex_gt, color_gt, illum_gt, pose_gt, lm_gt = value
+        ground_truth = \
+            {
+                'shape': shape_gt,
+                'pose': pose_gt,
+                'exp': exp_gt,
+                'color': color_gt,
+                'illum': illum_gt,
+                'tex': tex_gt,
+                'landmark': lm_gt,
+            }
 
-    gt = split_3dmm_labels(values=ground_truth)
+        est = face_model(images, training=False)
+        est['landmark'] = compute_landmarks(
+            poses_param=est.get('pose'),
+            shapes_param=est.get('shape'),
+            exps_param=est.get('exp'),
+            bfm=bfm
+        )
 
-    est = face_model(images, training=False)
-    est['landmark'] = compute_landmarks(
-        poses_param=est.get('pose'),
-        shapes_param=est.get('shape'),
-        exps_param=est.get('exp'),
-        bfm=bfm
-    )
+        G_loss += loss_3dmm_warmup(
+            gt=ground_truth,
+            est=est,
+            metric=metric,
+            loss_types=loss_types,
+            loss_weights=loss_weights
+        )
 
-    loss_3dmm_warmup(
-        gt=gt,
-        est=est,
-        metric=metric,
-        loss_types=loss_types,
-        loss_weights=loss_weights
-    )
-
-    save_rendered_images_for_warmup_eval(
-        bfm=bfm,
-        gt=gt,
-        est=est,
-        image_size=render_image_size,
-        eval_dir=eval_dir,
-        batch_id=batch_id
-    )
+        if i == 0:
+            save_rendered_images_for_warmup_eval(
+                bfm=bfm,
+                gt=ground_truth,
+                est=est,
+                image_size=render_image_size,
+                eval_dir=eval_dir,
+                batch_id=step_id
+            )
+    print('step={0}, test loss: {1}'.format(step_id, G_loss))
