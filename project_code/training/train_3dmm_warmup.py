@@ -1,7 +1,7 @@
 import tensorflow as tf
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.models.networks_linear_3dmm import FaceNetLinear3DMM
+from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
 from project_code.training.data import setup_3dmm_warmup_data
 from project_code.training.log import setup_summary
 from project_code.training.loss import loss_3dmm_warmup
@@ -13,7 +13,7 @@ def train_3dmm_warmup(
         ckpt,
         manager,
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         config,
         log_dir: str,
         eval_dir: str
@@ -22,6 +22,7 @@ def train_3dmm_warmup(
         log_dir=log_dir
     )
     train_ds, test_ds = setup_3dmm_warmup_data(
+        bfm=bfm,
         batch_size=config.batch_size,
         data_train_dir=config.data_train_dir,
         data_test_dir=config.data_test_data_dir
@@ -108,7 +109,7 @@ def train_3dmm_warmup(
 
 def train_3dmm_warmup_one_step(
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         optimizer,
         images,
         ground_truth,
@@ -118,10 +119,11 @@ def train_3dmm_warmup_one_step(
 ):
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
+
         est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose'),
-            shapes_param=est.get('shape'),
-            exps_param=est.get('exp'),
+            poses_param=est.get('pose') * bfm.pose_std + bfm.pose_mu,
+            shapes_param=est.get('shape') * bfm.shape_std + bfm.shape_mu,
+            exps_param=est.get('exp') * bfm.exp_std + bfm.exp_mu,
             bfm=bfm
         )
 
@@ -140,7 +142,7 @@ def train_3dmm_warmup_one_step(
 
 def test_3dmm_warmup_one_step(
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         test_ds,
         metric: dict,
         loss_types: dict,
@@ -165,9 +167,9 @@ def test_3dmm_warmup_one_step(
 
         est = face_model(images, training=False)
         est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose'),
-            shapes_param=est.get('shape'),
-            exps_param=est.get('exp'),
+            poses_param=est.get('pose') * bfm.pose_std + bfm.pose_mu,
+            shapes_param=est.get('shape') * bfm.shape_std + bfm.shape_mu,
+            exps_param=est.get('exp') * bfm.exp_std + bfm.exp_mu,
             bfm=bfm
         )
 

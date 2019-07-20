@@ -1,9 +1,11 @@
 from tensorflow.python.data.ops.dataset_ops import AUTOTUNE
 
 from project_code.data_tools.data_generator import get_3dmm_warmup_data
+from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
 
 
 def setup_3dmm_warmup_data(
+    bfm: FFTfMorphableModel,
     batch_size,
     data_train_dir,
     data_test_dir,
@@ -11,6 +13,7 @@ def setup_3dmm_warmup_data(
 ):
     # load training dataset
     train_ds, test_ds = get_3dmm_warmup_data(
+        bfm=bfm,
         data_train_dir=data_train_dir,
         data_test_dir=data_test_dir,
         image_suffix=image_suffix,

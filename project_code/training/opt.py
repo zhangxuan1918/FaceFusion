@@ -4,8 +4,9 @@ import numpy as np
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_2
 from tf_3dmm.mesh.transform import affine_transform
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 import matplotlib.pyplot as plt
+
+from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
 
 
 def split_3dmm_labels(values):
@@ -47,7 +48,7 @@ def compute_landmarks(
         poses_param,
         shapes_param,
         exps_param,
-        bfm: TfMorphableModel
+        bfm: FFTfMorphableModel
 ):
     start = 0
     end = shapes_param.shape[0]
@@ -121,7 +122,7 @@ def render_batch(
 
 
 def save_rendered_images_for_warmup_eval(
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         gt,
         est,
         image_size,
@@ -131,6 +132,14 @@ def save_rendered_images_for_warmup_eval(
         max_images_in_dir=10,
 ):
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
+
+    # recover params
+    gt['pose'] = gt['pose'] * bfm.pose_std + bfm.pose_mu
+    gt['shape'] = gt['shape'] * bfm.shape_std + bfm.shape_mu
+    gt['exp'] = gt['exp'] * bfm.exp_std + bfm.exp_mu
+    gt['tex'] = gt['tex'] * bfm.tex_std + bfm.tex_mu
+    gt['color'] = gt['color'] * bfm.color_std + bfm.color_mu
+    gt['illum'] = gt['illum'] * bfm.illum_std + bfm.illum_mu
 
     images_gt = render_batch(
         batch_angles_grad=gt['pos'][0:num_images_to_render, 0:3],
@@ -144,6 +153,14 @@ def save_rendered_images_for_warmup_eval(
         image_size=image_size,
         bfm=bfm
     )
+
+    # recover params
+    est['pose'] = est['pose'] * bfm.pose_std + bfm.pose_mu
+    est['shape'] = est['shape'] * bfm.shape_std + bfm.shape_mu
+    est['exp'] = est['exp'] * bfm.exp_std + bfm.exp_mu
+    est['tex'] = est['tex'] * bfm.tex_std + bfm.tex_mu
+    est['color'] = est['color'] * bfm.color_std + bfm.color_mu
+    est['illum'] = est['illum'] * bfm.illum_std + bfm.illum_mu
 
     images_est = render_batch(
         batch_angles_grad=est['pos'][0:num_images_to_render, 0:3],

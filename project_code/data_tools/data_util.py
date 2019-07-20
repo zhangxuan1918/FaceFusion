@@ -2,9 +2,7 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 
-params_mean_var = np.load('/project/opt/project_code/data/3dmm/300W_LP_mean_var/stats_300W_LP.npz')
-params_mean_var['Pose_Para_mean'][:, 3:] = params_mean_var['Pose_Para_mean'] * 224. / 450.
-params_mean_var['Pose_Para_std'][:, 3:] = params_mean_var['Pose_Para_std'] * 224. / 450.
+from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
 
 
 def load_image_3dmm(image_files):
@@ -26,7 +24,7 @@ def load_image_3dmm(image_files):
     return image
 
 
-def load_mat_3dmm(data_name, mat_files):
+def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_files: list):
     """
     load labels for image
     we rescale image from size (450, 450) to (224, 224)
@@ -81,12 +79,12 @@ def load_mat_3dmm(data_name, mat_files):
             raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 
         # normalize data
-        sp = np.divide(np.subtract(sp, params_mean_var['Shape_Para_mean']), params_mean_var['Shape_Para_std'])
-        ep = np.divide(np.subtract(ep, params_mean_var['Exp_Para_mean']), params_mean_var['Exp_Para_std'])
-        tp = np.divide(np.subtract(tp, params_mean_var['Tex_Para_mean']), params_mean_var['Tex_Para_std'])
-        cp = np.divide(np.subtract(cp, params_mean_var['Color_Para_mean']), params_mean_var['Color_Para_std'])
-        ip = np.divide(np.subtract(ip, params_mean_var['Illum_Para_mean']), params_mean_var['Illum_Para_std'])
-        pp = np.divide(np.subtract(pp, params_mean_var['Pose_Para_mean']), params_mean_var['Pose_Para_std'])
+        sp = np.divide(np.subtract(sp, bfm.shape_mu.numpy()), bfm.shape_std.numpy())
+        ep = np.divide(np.subtract(ep, bfm.exp_mu.numpy()), bfm.exp_std.numpy())
+        tp = np.divide(np.subtract(tp, bfm.tex_mu.numpy()), bfm.tex_std.numpy())
+        cp = np.divide(np.subtract(cp, bfm.color_mu.numpy()), bfm.color_std.numpy())
+        ip = np.divide(np.subtract(ip, bfm.illum_mu.numpy()), bfm.illum_std.numpy())
+        pp = np.divide(np.subtract(pp, bfm.pose_mu.numpy()), bfm.pose_std.numpy())
 
         return sp, ep, tp, cp, ip, pp, lm
 
@@ -94,8 +92,8 @@ def load_mat_3dmm(data_name, mat_files):
     return gt
 
 
-def load_3dmm_data(data_name, image_files, mat_files):
-    return load_image_3dmm(image_files=image_files), load_mat_3dmm(data_name=data_name, mat_files=mat_files)
+def load_3dmm_data(bfm: FFTfMorphableModel, data_name: str, image_files: list, mat_files: list):
+    return load_image_3dmm(image_files=image_files), load_mat_3dmm(bfm=bfm, data_name=data_name, mat_files=mat_files)
 
 
 def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,

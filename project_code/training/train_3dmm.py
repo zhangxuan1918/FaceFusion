@@ -2,9 +2,9 @@ import os
 
 import tensorflow as tf
 from tensorflow.python import keras
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.models.networks_linear_3dmm import FaceNetLinear3DMM
+from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
 from project_code.training.data import setup_3dmm_data
 from project_code.training.loss import loss_3dmm
 from project_code.training.opt import compute_landmarks, render_batch, save_rendered_images_for_eval
@@ -15,7 +15,7 @@ def train_3dmm(
         ckpt,
         manager,
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         config,
         log_dir: str,
         eval_dir: str
@@ -74,7 +74,7 @@ def train_3dmm(
 
 def train_3dmm_one_step(
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         optimizer,
         images,
         metric,
@@ -110,7 +110,7 @@ def train_3dmm_one_step(
 
 def test_3dmm_one_step(
         face_model: FaceNetLinear3DMM,
-        bfm: TfMorphableModel,
+        bfm: FFTfMorphableModel,
         images,
         metric,
         loss_type,
