@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 import scipy.io as sio
 
-data_folder = '/opt/data/warmup/train/'
+data_folder = '/opt/data/300W_LP/'
 data_root = pathlib.Path(data_folder)
 mat_paths = list(data_root.glob('*/*.mat'))
 
@@ -52,12 +52,12 @@ for mat_file in mat_paths:
         print(color_para_var / (counter - 1))
 
 # replace 0 var to be 1
-shape_para_var[shape_para_var < 0.001] = 1.
-pose_para_var[pose_para_var < 0.001] = 1.
-exp_para_var[exp_para_var < 0.001] = 1.
-color_para_var[color_para_var < 0.001] = 1.
-illum_para_var[illum_para_var < 0.001] = 1.
-tex_para_var[tex_para_var < 0.001] = 1.
+# shape_para_var[shape_para_var < 0.001] = 1.
+# pose_para_var[pose_para_var < 0.001] = 1.
+# exp_para_var[exp_para_var < 0.001] = 1.
+# color_para_var[color_para_var < 0.001] = 1.
+# illum_para_var[illum_para_var < 0.001] = 1.
+# tex_para_var[tex_para_var < 0.001] = 1.
 
 print('min shape var %5f' % np.min(shape_para_var))
 print('min pose var %5f' % np.min(pose_para_var))

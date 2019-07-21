@@ -68,9 +68,9 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
     pp = mat_data['Pose_Para']
 
     if data_name == '300W_LP':
-        lm = mat_data['pt2d']
+        lm = mat_data['pt2d'] * 224 / 450
     elif data_name == 'AFLW_2000':
-        lm = mat_data['pt3d_68'][0:2, :]
+        lm = mat_data['pt3d_68'][0:2, :] * 224 / 450
     else:
         raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 

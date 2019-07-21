@@ -241,6 +241,8 @@ def save_images(images, filename, titles, landmarks=None):
         lm = landmarks[i]
 
         ax = fig.add_subplot(1, n, i + 1)
+        ax.set_ylim(bottom=224, top=0)
+        ax.set_xlim(left=0, right=224)
         ax.imshow(im)
         if lm is not None:
             ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
