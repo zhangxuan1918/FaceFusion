@@ -3,20 +3,20 @@ import os
 import tensorflow as tf
 from tensorflow.python import keras
 
-from project_code.models.networks_linear_3dmm import FaceNetLinear3DMM
-from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
-from project_code.training.data import setup_3dmm_data
-from project_code.training.loss import loss_3dmm
-from project_code.training.opt import compute_landmarks, render_batch, save_rendered_images_for_eval
+from morphable_model.model.morphable_model import FFTfMorphableModel
+from training.config_util import EasyDict
+from training.data import setup_3dmm_data
+from training.loss import loss_3dmm
+from training.opt import compute_landmarks, render_batch, save_rendered_images_for_eval
 
 
 def train_3dmm(
         numof_epochs: int,
         ckpt,
         manager,
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
-        config,
+        config: EasyDict,
         log_dir: str,
         eval_dir: str
 ):
@@ -73,7 +73,7 @@ def train_3dmm(
 
 
 def train_3dmm_one_step(
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
         optimizer,
         images,
@@ -109,7 +109,7 @@ def train_3dmm_one_step(
 
 
 def test_3dmm_one_step(
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
         images,
         metric,

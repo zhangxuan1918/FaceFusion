@@ -1,18 +1,19 @@
 import os
 
 import numpy as np
-from tensorflow.python import keras
 import tensorflow as tf
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+from tensorflow.python import keras
 
-from project_code.models.networks_resnet50 import Resnet50, resnet50_backend, Resnet
-from project_code.training.train_3dmm import train_3dmm
-from project_code.training.train_3dmm_warmup import train_3dmm_warmup
+from models.networks_resnet50 import Resnet
+from morphable_model.model.morphable_model import FFTfMorphableModel
+from training.config_util import EasyDict
+from training.train_3dmm import train_3dmm
+from training.train_3dmm_warmup import train_3dmm_warmup
 
 
 class FaceNetLinear3DMM:
 
-    def __init__(self, config_general, config_train_warmup, config_train):
+    def __init__(self, config_general: EasyDict, config_train_warmup: EasyDict, config_train: EasyDict):
         """
 
         :param config_general:
@@ -24,13 +25,14 @@ class FaceNetLinear3DMM:
              dim_exp: 29
              dim_pose: 7
 
-             checkout_dir: string
-             bfm_dir
+             save_dir: string
+             bfm_dir: string
 
         :param config_train_warmup:
             loss_type: 'l2' or 'l1'
             face_vgg_v2_path: string
             log_freq: int
+            max_checkpoint_to_keep: int
             loss_shape_type: string, optional, default l2
             loss_pose_type: string, optional, default l2
             loss_exp_type: string, optional, default l2
@@ -41,9 +43,14 @@ class FaceNetLinear3DMM:
             data_train_dir: /opt/data/300W_LP
             data_test_dir: /opt/data/AFLW2000
             data_mean_std: /opt/data/300W_LP_stats/stats_300W_LP.npz
+            batch_size: int
+            learning_rate: float
+            beta_1: float
 
         :param config_train:
             loss_type: 'l2' or 'l1'
+            max_checkpoint_to_keep: int
+            batch_size: int
         """
         self.config_general = config_general
         self.config_train_warmup = config_train_warmup
@@ -60,14 +67,13 @@ class FaceNetLinear3DMM:
             self.config_general.dim_pose
         ]))
 
-        self.checkpoint_dir = self.config_general.checkout_dir
         self.save_dir = self.config_general.save_dir
-        self.model_dir_warm_up = os.path.join(self.save_dir, 'model_warm_up')
-        self.eval_dir_warm_up = os.path.join(self.save_dir, 'eval_warm_up')
-        self.log_dir_warm_up = os.path.join(self.save_dir, 'log_warm_up')
-        self.model_dir = os.path.join(self.save_dir, 'model')
-        self.eval_dir = os.path.join(self.save_dir, 'eval')
-        self.log_dir = os.path.join(self.save_dir, 'log')
+        self.model_dir_warm_up = os.path.join(self.save_dir, 'warm_up', 'model')
+        self.eval_dir_warm_up = os.path.join(self.save_dir, 'warm_up', 'eval')
+        self.log_dir_warm_up = os.path.join(self.save_dir, 'warm_up', 'log')
+        self.model_dir = os.path.join(self.save_dir, 'train', 'model')
+        self.eval_dir = os.path.join(self.save_dir, 'train', 'eval')
+        self.log_dir = os.path.join(self.save_dir, 'train', 'log')
 
         if not os.path.exists(self.model_dir_warm_up):
             os.makedirs(self.model_dir_warm_up)
@@ -86,9 +92,14 @@ class FaceNetLinear3DMM:
 
     def build(self):
         self.resnet50 = Resnet(image_size=self.image_size)
+        self.resnet50.build()
         self.dense = keras.layers.Dense(units=self.output_size_structure[-1], name='3dmm_dense')
-        self.model = keras.Sequential([self.resnet50.model, self.dense])
-        self.bfm = TfMorphableModel(model_path=self.config_general.bfm_dir)
+        self.model = keras.Sequential([self.resnet50.model, self.dense], name='Face3dmm')
+        self.bfm = FFTfMorphableModel(
+            param_mean_var_path=self.config_train_warmup.data_mean_std,
+            model_path=self.config_general.bfm_dir,
+            model_type='BFM'
+        )
 
     def __call__(self, inputs, training=True):
         output = self.model(inputs)
@@ -113,8 +124,8 @@ class FaceNetLinear3DMM:
 
     def setup_3dmm_model(self):
         ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
-        checkpoint_dir = os.path.join(self.checkpoint_dir, 'warmup')
-        manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_general.max_checkpoint_to_keep)
+        checkpoint_dir = self.model_dir_warm_up
+        manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_train_warmup.max_checkpoint_to_keep)
         ckpt.restore(manager.latest_checkpoint)
 
         if manager.latest_checkpoint:
@@ -151,8 +162,8 @@ class FaceNetLinear3DMM:
 
     def _train_3dmm(self, numof_epochs):
         ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
-        checkpoint_dir = os.path.join(self.checkpoint_dir, 'train')
-        manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_general.max_checkpoint_to_keep)
+        checkpoint_dir = self.model_dir
+        manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_train.max_checkpoint_to_keep)
 
         self.summary()
 

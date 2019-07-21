@@ -6,7 +6,7 @@ from tf_3dmm.mesh.render import render_2
 from tf_3dmm.mesh.transform import affine_transform
 import matplotlib.pyplot as plt
 
-from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
+from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
 def split_3dmm_labels(values):

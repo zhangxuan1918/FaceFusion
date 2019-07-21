@@ -1,20 +1,20 @@
 import tensorflow as tf
 
-from project_code.models.networks_linear_3dmm import FaceNetLinear3DMM
-from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
-from project_code.training.data import setup_3dmm_warmup_data
-from project_code.training.log import setup_summary
-from project_code.training.loss import loss_3dmm_warmup
-from project_code.training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
+from morphable_model.model.morphable_model import FFTfMorphableModel
+from training.config_util import EasyDict
+from training.data import setup_3dmm_warmup_data
+from training.log import setup_summary
+from training.loss import loss_3dmm_warmup
+from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
 
 
 def train_3dmm_warmup(
         numof_epochs: int,
         ckpt,
         manager,
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
-        config,
+        config: EasyDict,
         log_dir: str,
         eval_dir: str
 ):
@@ -25,7 +25,7 @@ def train_3dmm_warmup(
         bfm=bfm,
         batch_size=config.batch_size,
         data_train_dir=config.data_train_dir,
-        data_test_dir=config.data_test_data_dir
+        data_test_dir=config.data_test_dir
     )
 
     optimizer = tf.optimizers.Adam(
@@ -59,17 +59,17 @@ def train_3dmm_warmup(
                 print('warm up training: batch={0}'.format(batch_id))
 
             ckpt.step.assign_add(1)
-            images, shape_gt, exp_gt, tex_gt, color_gt, illum_gt, pose_gt, lm_gt = value
-            ground_truth = \
-                {
-                    'shape': shape_gt,
-                    'pose': pose_gt,
-                    'exp': exp_gt,
-                    'color': color_gt,
-                    'illum': illum_gt,
-                    'tex': tex_gt,
-                    'landmark': lm_gt,
-                }
+            # ground_truth = \
+            # {
+            #     'shape': shape_gt,
+            #     'pose': pose_gt,
+            #     'exp': exp_gt,
+            #     'color': color_gt,
+            #     'illum': illum_gt,
+            #     'tex': tex_gt,
+            #     'landmark': lm_gt,
+            # }
+            images, ground_truth = value
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(
@@ -108,7 +108,7 @@ def train_3dmm_warmup(
 
 
 def train_3dmm_warmup_one_step(
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
         optimizer,
         images,
@@ -141,7 +141,7 @@ def train_3dmm_warmup_one_step(
 
 
 def test_3dmm_warmup_one_step(
-        face_model: FaceNetLinear3DMM,
+        face_model,
         bfm: FFTfMorphableModel,
         test_ds,
         metric: dict,
@@ -153,17 +153,17 @@ def test_3dmm_warmup_one_step(
 ):
     G_loss = 0
     for i, value in enumerate(test_ds):
-        images, shape_gt, exp_gt, tex_gt, color_gt, illum_gt, pose_gt, lm_gt = value
-        ground_truth = \
-            {
-                'shape': shape_gt,
-                'pose': pose_gt,
-                'exp': exp_gt,
-                'color': color_gt,
-                'illum': illum_gt,
-                'tex': tex_gt,
-                'landmark': lm_gt,
-            }
+        # ground_truth = \
+        #     {
+        #         'shape': shape_gt,
+        #         'pose': pose_gt,
+        #         'exp': exp_gt,
+        #         'color': color_gt,
+        #         'illum': illum_gt,
+        #         'tex': tex_gt,
+        #         'landmark': lm_gt,
+        #     }
+        images, ground_truth = value
 
         est = face_model(images, training=False)
         est['landmark'] = compute_landmarks(

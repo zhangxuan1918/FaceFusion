@@ -11,3 +11,5 @@ services:
       - face_fusion.env
     volumes:
       - /home/xuan/Projects/data/face_fuse:/opt/data/
+
+#docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"

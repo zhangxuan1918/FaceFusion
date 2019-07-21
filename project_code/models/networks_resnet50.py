@@ -139,7 +139,7 @@ class Resnet:
         x = Flatten()(x)
         x = Dense(512, activation='relu', name='dim_proj')(x)
 
-        self.model = Model(inputs=inputs, outputs=x)
+        self.model = Model(inputs=inputs, outputs=x, name='Resnet50')
 
     def summary(self):
         print(self.model.summary())

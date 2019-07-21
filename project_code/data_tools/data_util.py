@@ -2,19 +2,19 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 
-from project_code.morphable_model.model.morphable_model import FFTfMorphableModel
+from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-def load_image_3dmm(image_files):
+def load_image_3dmm(image_file: str):
     """
     load and preprocess images for 3dmm
     original image size (450, 450)
     we need to scale down image to (224, 224)
-    :param image_files:
+    :param image_file:
     :return:
     """
 
-    image = tf.io.read_file(image_files)
+    image = tf.io.read_file(image_file)
     image = tf.image.decode_jpeg(image, channels=3)
 
     # resize image from (450, 450) to (224, 224)
@@ -24,31 +24,29 @@ def load_image_3dmm(image_files):
     return image
 
 
-def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_files: list):
+def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
     """
     load labels for image
     we rescale image from size (450, 450) to (224, 224)
     we need to adapt the 3dmm params
 
     300W_LP data set
-        # Shape_Para: shape=(199, 1) => (199,)
-        # Pose_Para: shape=(1, 7) => (7,)
-        # Exp_Para: shape=(29, 1) => (29,)
-        # Color_Para: shape=(1, 7) => (7,)
-        # Illum_Para: shape=(1, 10) => (10,)
-        # pt2d: shape=(2, 68) => (2, 68)
-            flatten to (136, )
-        # Tex_Para: shape=(199, 1) => (199,)
+        # Shape_Para: shape=(199, 1)
+        # Pose_Para: shape=(1, 7)
+        # Exp_Para: shape=(29, 1)
+        # Color_Para: shape=(1, 7)
+        # Illum_Para: shape=(1, 10)
+        # pt2d: shape=(2, 68)
+        # Tex_Para: shape=(199, 1)
 
     AFLW_200 data set
-        # Shape_Para: shape=(199, 1) => (199,)
-        # Pose_Para: shape=(1, 7) => (7,)
-        # Exp_Para: shape=(29, 1) => (29,)
-        # Color_Para: shape=(1, 7) => (7,)
-        # Illum_Para: shape=(1, 10) => (10,)
-        # pt3d_68: shape=(3, 68) => (2, 68)
-            flatten to (136, )
-        # Tex_Para: shape=(199, 1) => (199,)
+        # Shape_Para: shape=(199, 1)
+        # Pose_Para: shape=(1, 7)
+        # Exp_Para: shape=(29, 1)
+        # Color_Para: shape=(1, 7)
+        # Illum_Para: shape=(1, 10)
+        # pt3d_68: shape=(3, 68)
+        # Tex_Para: shape=(199, 1)
 
     total params: 587
 
@@ -58,42 +56,54 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_files: list):
     :param: label_file:
     :param: image_original_size: 450
     :param: image_rescaled_size: 224
-    :return: label of shape (587, )
+    :return:
     """
+    mat_data = sio.loadmat(mat_file)
 
-    def _read_mat(mat_file):
-        mat_data = sio.loadmat(mat_file.numpy())
+    sp = mat_data['Shape_Para']
+    ep = mat_data['Exp_Para']
+    tp = mat_data['Tex_Para']
+    cp = mat_data['Color_Para']
+    ip = mat_data['Illum_Para']
+    pp = mat_data['Pose_Para']
 
-        sp = mat_data['Shape_Para']
-        ep = mat_data['Exp_Para']
-        tp = mat_data['Tex_Para']
-        cp = mat_data['Color_Para']
-        ip = mat_data['Illum_Para']
-        pp = mat_data['Pose_Para']
+    if data_name == '300W_LP':
+        lm = mat_data['pt2d']
+    elif data_name == 'AFLW_2000':
+        lm = mat_data['pt3d_68'][0:2, :]
+    else:
+        raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 
-        if data_name == '300W_LP':
-            lm = mat_data['pt2d']
-        elif data_name == 'AFLW_2000':
-            lm = mat_data['pt3d_68'][0:2, :]
-        else:
-            raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
+    # normalize data
+    sp = np.divide(np.subtract(sp, bfm.shape_mu.numpy()), bfm.shape_std.numpy())
+    ep = np.divide(np.subtract(ep, bfm.exp_mu.numpy()), bfm.exp_std.numpy())
+    tp = np.divide(np.subtract(tp, bfm.tex_mu.numpy()), bfm.tex_std.numpy())
+    cp = np.divide(np.subtract(cp, bfm.color_mu.numpy()), bfm.color_std.numpy())
+    ip = np.divide(np.subtract(ip, bfm.illum_mu.numpy()), bfm.illum_std.numpy())
+    pp = np.divide(np.subtract(pp, bfm.pose_mu.numpy()), bfm.pose_std.numpy())
 
-        # normalize data
-        sp = np.divide(np.subtract(sp, bfm.shape_mu.numpy()), bfm.shape_std.numpy())
-        ep = np.divide(np.subtract(ep, bfm.exp_mu.numpy()), bfm.exp_std.numpy())
-        tp = np.divide(np.subtract(tp, bfm.tex_mu.numpy()), bfm.tex_std.numpy())
-        cp = np.divide(np.subtract(cp, bfm.color_mu.numpy()), bfm.color_std.numpy())
-        ip = np.divide(np.subtract(ip, bfm.illum_mu.numpy()), bfm.illum_std.numpy())
-        pp = np.divide(np.subtract(pp, bfm.pose_mu.numpy()), bfm.pose_std.numpy())
-
-        return sp, ep, tp, cp, ip, pp, lm
-
-    gt = tf.py_function(_read_mat, [mat_files], [tf.float32] * 7)
-    return gt
+    return \
+        {
+            'shape': sp,
+            'pose': pp,
+            'exp': ep,
+            'color': cp,
+            'illum': ip,
+            'tex': tp,
+            'landmark': lm
+        }
 
 
-def load_3dmm_data(bfm: FFTfMorphableModel, data_name: str, image_files: list, mat_files: list):
-    return load_image_3dmm(image_files=image_files), load_mat_3dmm(bfm=bfm, data_name=data_name, mat_files=mat_files)
+def load_3dmm_data_gen(
+        bfm: FFTfMorphableModel,
+        data_name: str,
+        image_file: str,
+        mat_file: str):
+    for im_file, mat_file in zip(image_file, mat_file):
+        image = load_image_3dmm(image_file=im_file)
+        mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
+
+        yield image, mat_dict
 
 
 def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
@@ -130,7 +140,6 @@ def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
     landmarks = np.reshape(landmarks, (2, -1))
     landmarks = landmarks * scale
     tex_param = np.reshape(tex_param, (-1, 1))
-
 
     shape_param = np.add(np.multiply(np.array(shape_param), params_mean_var['Shape_Para_var']),
                          params_mean_var['Shape_Para_mean'])
