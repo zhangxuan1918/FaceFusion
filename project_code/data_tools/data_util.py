@@ -80,6 +80,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
     tp = np.divide(np.subtract(tp, bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
     cp = np.divide(np.subtract(cp, bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
     ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
+    pp[0, 3:] = pp[0, 3:] * 224 / 450
     pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
 
     return \

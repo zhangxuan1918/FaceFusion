@@ -262,4 +262,5 @@ def save_images(images, filename, titles, landmarks=None):
             ax.plot(lm[0, 60:68], lm[1, 60:68], marker='o', markersize=2, linestyle='-',
                     color='w', lw=2)
 
+        ax.set_title(t)
         plt.savefig(filename)
