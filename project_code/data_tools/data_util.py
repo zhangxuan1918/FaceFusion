@@ -29,7 +29,6 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
     load labels for image
     we rescale image from size (450, 450) to (224, 224)
     we need to adapt the 3dmm params
-
     300W_LP data set
         # Shape_Para: shape=(199, 1)
         # Pose_Para: shape=(1, 7)
@@ -38,7 +37,6 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         # Illum_Para: shape=(1, 10)
         # pt2d: shape=(2, 68)
         # Tex_Para: shape=(199, 1)
-
     AFLW_200 data set
         # Shape_Para: shape=(199, 1)
         # Pose_Para: shape=(1, 7)
@@ -47,11 +45,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         # Illum_Para: shape=(1, 10)
         # pt3d_68: shape=(3, 68)
         # Tex_Para: shape=(199, 1)
-
     total params: 587
-
-
-
     :param: data_name
     :param: label_file:
     :param: image_original_size: 450
