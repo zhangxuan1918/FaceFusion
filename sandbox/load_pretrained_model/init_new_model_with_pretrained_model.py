@@ -1,14 +1,14 @@
 from tensorflow.python import keras
 
-from project_code.models.networks_resnet50 import ConvBlock, IdentityBlock
-from project_code.models.networks_3dmm import Face3DMM
+from project_code.models.networks_resnet50 import ConvBlock, create_identity_bock
+from project_code.models.networks_linear_3dmm import Face3DMM
 
 face_model = Face3DMM()
 face_model.build(input_shape=(None, 224, 224, 3))
 pretrained_model = keras.models.load_model('G:/PycharmProjects/FaceFusion/project_code/data/face_vgg_v2/weights.h5')
 
 for fm_layer in face_model.resnet.layers:
-    if not isinstance(fm_layer, ConvBlock) and not isinstance(fm_layer, IdentityBlock):
+    if not isinstance(fm_layer, ConvBlock) and not isinstance(fm_layer, create_identity_bock):
         print(fm_layer.name)
 
         if len(fm_layer.weights) > 0:

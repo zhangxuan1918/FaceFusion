@@ -1,300 +1,238 @@
-from tensorflow.python import keras
-import tensorflow as tf
+from __future__ import absolute_import
+from __future__ import print_function
+
+from tensorflow.python.keras import layers, Input, Model
+from tensorflow.python.keras.layers import Conv2D, Activation, BatchNormalization, MaxPooling2D, AveragePooling2D, \
+    Flatten, Dense
+from tensorflow.python.keras.regularizers import l2
+
+global weight_decay
 weight_decay = 1e-4
 
 
-class IdentityBlock(keras.Model):
+def identity_block(input_tensor, kernel_size, filters, stage, block, trainable=True):
+    """The identity block is the block that has no conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: default 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filterss of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+    # Returns
+        Output tensor for the block.
+    """
+    filters1, filters2, filters3 = filters
+    bn_axis = 3
 
-    def __init__(self, kernel_size: int, filters: list, stage: int, block: int, stride=1, trainable=True):
-        super(IdentityBlock, self).__init__()
-        filters1, filters2, filters3 = filters
+    conv_name_1 = 'conv' + str(stage) + '_' + str(block) + '_1x1_reduce'
+    bn_name_1 = 'conv' + str(stage) + '_' + str(block) + '_1x1_reduce/bn'
+    x = Conv2D(filters1, (1, 1),
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_1)(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_1)(x)
+    x = Activation('relu')(x)
+
+    conv_name_2 = 'conv' + str(stage) + '_' + str(block) + '_3x3'
+    bn_name_2 = 'conv' + str(stage) + '_' + str(block) + '_3x3/bn'
+    x = Conv2D(filters2, kernel_size,
+               padding='same',
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_2)(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_2)(x)
+    x = Activation('relu')(x)
+
+    conv_name_3 = 'conv' + str(stage) + '_' + str(block) + '_1x1_increase'
+    bn_name_3 = 'conv' + str(stage) + '_' + str(block) + '_1x1_increase/bn'
+    x = Conv2D(filters3, (1, 1),
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_3)(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_3)(x)
+
+    x = layers.add([x, input_tensor])
+    x = Activation('relu')(x)
+    return x
+
+
+def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2), trainable=True):
+    """A block that has a conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: default 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filterss of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+    # Returns
+        Output tensor for the block.
+    Note that from stage 3, the first conv layer at main path is with strides=(2,2)
+    And the shortcut should have strides=(2,2) as well
+    """
+    filters1, filters2, filters3 = filters
+    bn_axis = 3
+
+    conv_name_1 = 'conv' + str(stage) + '_' + str(block) + '_1x1_reduce'
+    bn_name_1 = 'conv' + str(stage) + '_' + str(block) + '_1x1_reduce/bn'
+    x = Conv2D(filters1, (1, 1), strides=strides,
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_1)(input_tensor)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_1)(x)
+    x = Activation('relu')(x)
+
+    conv_name_2 = 'conv' + str(stage) + '_' + str(block) + '_3x3'
+    bn_name_2 = 'conv' + str(stage) + '_' + str(block) + '_3x3/bn'
+    x = Conv2D(filters2, kernel_size, padding='same',
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_2)(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_2)(x)
+    x = Activation('relu')(x)
+
+    conv_name_3 = 'conv' + str(stage) + '_' + str(block) + '_1x1_increase'
+    bn_name_3 = 'conv' + str(stage) + '_' + str(block) + '_1x1_increase/bn'
+    x = Conv2D(filters3, (1, 1),
+               kernel_initializer='orthogonal',
+               use_bias=False,
+               kernel_regularizer=l2(weight_decay),
+               trainable=trainable,
+               name=conv_name_3)(x)
+    x = BatchNormalization(axis=bn_axis, name=bn_name_3)(x)
+
+    conv_name_4 = 'conv' + str(stage) + '_' + str(block) + '_1x1_proj'
+    bn_name_4 = 'conv' + str(stage) + '_' + str(block) + '_1x1_proj/bn'
+    shortcut = Conv2D(filters3, (1, 1), strides=strides,
+                      kernel_initializer='orthogonal',
+                      use_bias=False,
+                      kernel_regularizer=l2(weight_decay),
+                      trainable=trainable,
+                      name=conv_name_4)(input_tensor)
+    shortcut = BatchNormalization(axis=bn_axis, name=bn_name_4)(shortcut)
+
+    x = layers.add([x, shortcut])
+    x = Activation('relu')(x)
+    return x
+
+
+class Resnet:
+
+    def __init__(self, image_size):
+        self.image_size = image_size
+
+    def build(self):
+        inputs = Input(shape=[self.image_size, self.image_size, 3], name='image_input')
+        x = self.resnet50_backend(inputs=inputs)
+
+        # AvgPooling
+        x = AveragePooling2D((7, 7), name='avg_pool')(x)
+        x = Flatten()(x)
+        x = Dense(512, activation='relu', name='dim_proj')(x)
+
+        self.model = Model(inputs=inputs, outputs=x, name='Resnet50')
+
+    def summary(self):
+        print(self.model.summary())
+
+    def freeze(self):
+        self.model.trainable = False
+
+    def unfreeze(self):
+        self.model.trainable = True
+
+    def load_pretrained(self, weights_path):
+        self.model.load_weights(filepath=weights_path)
+
+    def resnet50_backend(self, inputs):
         bn_axis = 3
-        self.out_channel = filters3
-        self.stride = stride
+        # inputs are of size 224 x 224 x 3
+        x = Conv2D(64, (7, 7), strides=(2, 2),
+                   kernel_initializer='orthogonal',
+                   use_bias=False,
+                   trainable=True,
+                   kernel_regularizer=l2(weight_decay),
+                   padding='same',
+                   name='conv1/7x7_s2')(inputs)
 
-        conv_name_1 = 'conv{stage}_{block}_1x1_reduce'.format(stage=stage, block=block)
-        bn_name_1 = 'conv{stage}_{block}_1x1_reduce/bn'.format(stage=stage, block=block)
+        # inputs are of size 112 x 112 x 64
+        x = BatchNormalization(axis=bn_axis, name='conv1/7x7_s2/bn')(x)
+        x = Activation('relu')(x)
+        x = MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-        self.conv1 = keras.layers.Conv2D(
-            filters1,
-            kernel_size=(1, 1),
-            strides=(stride, stride),
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_1
-        )
-        self.bn1 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_1
-        )
-        self.act1 = keras.layers.Activation('relu')
+        # inputs are of size 56 x 56
+        x = conv_block(x, 3, [64, 64, 256], stage=2, block=1, strides=(1, 1), trainable=True)
+        x = identity_block(x, 3, [64, 64, 256], stage=2, block=2, trainable=True)
+        x = identity_block(x, 3, [64, 64, 256], stage=2, block=3, trainable=True)
 
-        conv_name_2 = 'conv{stage}_{block}_3x3'.format(stage=stage, block=block)
-        bn_name_2 = 'conv{stage}_{block}_3x3/bn'.format(stage=stage, block=block)
+        # inputs are of size 28 x 28
+        x = conv_block(x, 3, [128, 128, 512], stage=3, block=1, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=2, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=3, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=4, trainable=True)
 
-        self.conv2 = keras.layers.Conv2D(
-            filters2,
-            kernel_size=kernel_size,
-            padding='same',
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_2
-        )
-        self.bn2 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_2
-        )
-        self.act2 = keras.layers.Activation('relu')
+        # inputs are of size 14 x 14
+        x = conv_block(x, 3, [256, 256, 1024], stage=4, block=1, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=2, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=3, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=4, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=5, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=6, trainable=True)
 
-        conv_name_3 = 'conv{stage}_{block}_1x1_increase'.format(stage=stage, block=block)
-        bn_name_3 = 'conv{stage}_{block}_1x1_increase/bn'.format(stage=stage, block=block)
-
-        self.conv3 = keras.layers.Conv2D(
-            filters3,
-            kernel_size=(1, 1),
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_3
-        )
-        self.bn3 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_3
-        )
-        self.act3 = keras.layers.Activation('relu')
-
-        self.add = keras.layers.Add()
-
-    def call(self, inputs, training=True):
-        x = self.conv1(inputs)
-        x = self.bn1(x, training=training)
-        x = self.act1(x)
-
-        x = self.conv2(x)
-        x = self.bn2(x, training=training)
-        x = self.act2(x)
-
-        x = self.conv3(x)
-        x = self.bn3(x, training=training)
-
-        x = self.add([x, inputs])
-        x = self.act3(x)
+        # inputs are of size 7 x 7
+        x = conv_block(x, 3, [512, 512, 2048], stage=5, block=1, trainable=True)
+        x = identity_block(x, 3, [512, 512, 2048], stage=5, block=2, trainable=True)
+        x = identity_block(x, 3, [512, 512, 2048], stage=5, block=3, trainable=True)
         return x
 
-    def compute_output_shape(self, input_shape):
-        shape = tf.TensorShape(input_shape).as_list()
-        shape[1] = shape[1] // self.stride
-        shape[2] = shape[2] // self.stride
-        shape[-1] = self.out_channel
-        return tf.TensorShape(shape)
-
-
-class ConvBlock(keras.Model):
-    def __init__(self, kernel_size: int, filters: list, stage: int, block: int, stride=2, trainable=True):
-        super(ConvBlock, self).__init__()
-        filters1, filters2, filters3 = filters
+    def resnet50_backend_truncated(self, inputs):
         bn_axis = 3
-        self.output_channel = filters3
-        self.stride = stride
+        # inputs are of size 224 x 224 x 3
+        x = Conv2D(64, (7, 7), strides=(2, 2),
+                   kernel_initializer='orthogonal',
+                   use_bias=False,
+                   trainable=True,
+                   kernel_regularizer=l2(weight_decay),
+                   padding='same',
+                   name='conv1/7x7_s2')(inputs)
 
-        conv_name_1 = 'conv{stage}_{block}_1x1_reduce'.format(stage=stage, block=block)
-        bn_name_1 = 'conv{stage}_{block}_1x1_reduce/bn'.format(stage=stage, block=block)
+        # inputs are of size 112 x 112 x 64
+        x = BatchNormalization(axis=bn_axis, name='conv1/7x7_s2/bn')(x)
+        x = Activation('relu')(x)
+        x = MaxPooling2D((3, 3), strides=(2, 2))(x)
 
-        self.conv1 = keras.layers.Conv2D(
-            filters1,
-            kernel_size=(1, 1),
-            strides=(stride, stride),
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_1
-        )
-        self.bn1 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_1
-        )
-        self.act1 = keras.layers.Activation('relu')
+        # inputs are of size 56 x 56
+        x = conv_block(x, 3, [64, 64, 256], stage=2, block=1, strides=(1, 1), trainable=True)
+        x = identity_block(x, 3, [64, 64, 256], stage=2, block=2, trainable=True)
+        x = identity_block(x, 3, [64, 64, 256], stage=2, block=3, trainable=True)
 
-        conv_name_2 = 'conv{stage}_{block}_3x3'.format(stage=stage, block=block)
-        bn_name_2 = 'conv{stage}_{block}_3x3/bn'.format(stage=stage, block=block)
+        # inputs are of size 28 x 28
+        x = conv_block(x, 3, [128, 128, 512], stage=3, block=1, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=2, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=3, trainable=True)
+        x = identity_block(x, 3, [128, 128, 512], stage=3, block=4, trainable=True)
 
-        self.conv2 = keras.layers.Conv2D(
-            filters2,
-            kernel_size=kernel_size,
-            padding='same',
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_2
-        )
-        self.bn2 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_2
-        )
-        self.act2 = keras.layers.Activation('relu')
-
-        conv_name_3 = 'conv{stage}_{block}_1x1_increase'.format(stage=stage, block=block)
-        bn_name_3 = 'conv{stage}_{block}_1x1_increase/bn'.format(stage=stage, block=block)
-
-        self.conv3 = keras.layers.Conv2D(
-            filters3,
-            kernel_size=(1, 1),
-            kernel_initializer='he_normal',
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_3
-        )
-        self.bn3 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_3
-        )
-
-        conv_name_4 = 'conv{stage}_{block}_1x1_proj'.format(stage=stage, block=block)
-        bn_name_4 = 'conv{stage}_{block}_1x1_proj/bn'.format(stage=stage, block=block)
-
-        self.conv4 = keras.layers.Conv2D(
-            filters3,
-            kernel_size=(1, 1),
-            strides=(stride, stride),
-            use_bias=False,
-            kernel_regularizer=keras.regularizers.l2(weight_decay),
-            trainable=trainable,
-            name=conv_name_4
-        )
-        self.bn4 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name=bn_name_4
-        )
-        self.act3 = keras.layers.Activation('relu')
-        self.add = keras.layers.Add()
-
-    def call(self, inputs, training=True):
-        x = self.conv1(inputs)
-        x = self.bn1(x, training=training)
-        x = self.act1(x)
-
-        x = self.conv2(x)
-        x = self.bn2(x, training=training)
-        x = self.act2(x)
-
-        x = self.conv3(x)
-        x = self.bn3(x, training=training)
-
-        shortcut = self.conv4(inputs)
-        shortcut = self.bn4(shortcut)
-
-        x = self.add([x, shortcut])
-        x = self.act3(x)
-
+        # inputs are of size 14 x 14
+        x = conv_block(x, 3, [256, 256, 1024], stage=4, block=1, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=2, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=3, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=4, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=5, trainable=True)
+        x = identity_block(x, 3, [256, 256, 1024], stage=4, block=6, trainable=True)
         return x
 
-    def compute_output_shape(self, input_shape):
-        shape = tf.TensorShape(input_shape).as_list()
-        shape[1] = shape[1] // self.stride
-        shape[2] = shape[2] // self.stride
-        shape[-1] = self.out_channel
-        return tf.TensorShape(shape)
 
-
-class Resnet50(keras.Model):
-
-    def __init__(self):
-        super(Resnet50, self).__init__()
-        bn_axis = 3
-        self.conv1 = keras.layers.Conv2D(
-            filters=64,
-            kernel_size=(7, 7),
-            strides=(2, 2),
-            kernel_initializer='he_normal',
-            use_bias=False,
-            trainable=True,
-            padding='same',
-            name='conv1/7x7_s2'
-        )
-
-        self.bn1 = keras.layers.BatchNormalization(
-            axis=bn_axis,
-            name='conv1/7x7_s2/bn'
-        )
-        self.act1 = keras.layers.Activation('relu')
-        self.max_pool1 = keras.layers.MaxPool2D(pool_size=(3, 3), strides=(2, 2))
-
-        self.conv_bock2l = ConvBlock(kernel_size=3, filters=[64, 64, 256], stage=2, block=1, stride=1,
-                                     trainable=True)
-        self.identity_block22 = IdentityBlock(kernel_size=3, filters=[64, 64, 256], stage=2, block=2, trainable=True)
-        self.identity_block23 = IdentityBlock(kernel_size=3, filters=[64, 64, 256], stage=2, block=3, trainable=True)
-
-        self.conv_bock3l = ConvBlock(kernel_size=3, filters=[128, 128, 512], stage=3, block=1, stride=2, trainable=True)
-        self.identity_block32 = IdentityBlock(kernel_size=3, filters=[128, 128, 512], stage=3, block=2, trainable=True)
-        self.identity_block33 = IdentityBlock(kernel_size=3, filters=[128, 128, 512], stage=3, block=3, trainable=True)
-        self.identity_block34 = IdentityBlock(kernel_size=3, filters=[128, 128, 512], stage=3, block=4, trainable=True)
-
-        self.conv_bock4l = ConvBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=1, stride=2, trainable=True)
-        self.identity_block42 = IdentityBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=2, trainable=True)
-        self.identity_block43 = IdentityBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=3, trainable=True)
-        self.identity_block44 = IdentityBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=4, trainable=True)
-        self.identity_block45 = IdentityBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=5, trainable=True)
-        self.identity_block46 = IdentityBlock(kernel_size=3, filters=[256, 256, 1024], stage=4, block=6, trainable=True)
-
-        self.conv_bock5l = ConvBlock(kernel_size=3, filters=[512, 512, 2048], stage=5, block=1, stride=2, trainable=True)
-        self.identity_block52 = IdentityBlock(kernel_size=3, filters=[512, 512, 2048], stage=5, block=2, trainable=True)
-        self.identity_block53 = IdentityBlock(kernel_size=3, filters=[512, 512, 2048], stage=5, block=3, trainable=True)
-
-        self.avg_pool = keras.layers.AveragePooling2D(
-            pool_size=(7, 7),
-            name='avg_pool'
-
-        )
-        self.flatten = keras.layers.Flatten()
-        self.dim_proj = keras.layers.Dense(units=512, name='dim_proj')
-
-    def call(self, inputs, training=True):
-        # input size 224 x 224 x 3
-        x = self.conv1(inputs)
-        # input size 112 x 112 x 64
-        x = self.bn1(x, training=training)
-        x = self.act1(x)
-        x = self.max_pool1(x)
-
-        # input size 56 x 56
-        x = self.conv_bock2l(x, training=training)
-        x = self.identity_block22(x, training=training)
-        x = self.identity_block23(x, training=training)
-
-        # input size 28 x 28
-        x = self.conv_bock3l(x, training=training)
-        x = self.identity_block32(x, training=training)
-        x = self.identity_block33(x, training=training)
-        x = self.identity_block34(x, training=training)
-
-        # input size 14 x 14
-        x = self.conv_bock4l(x, training=training)
-        x = self.identity_block42(x, training=training)
-        x = self.identity_block43(x, training=training)
-        x = self.identity_block44(x, training=training)
-        x = self.identity_block45(x, training=training)
-        x = self.identity_block46(x, training=training)
-
-        # input size 7 x 7
-        x = self.conv_bock5l(x, training=training)
-        x = self.identity_block52(x, training=training)
-        x = self.identity_block53(x, training=training)
-
-        x = self.avg_pool(x)
-        x = self.flatten(x)
-        x = self.dim_proj(x)
-
-        return x
-
-    def compute_output_shape(self, input_shape):
-        batch, _, _, _ = tf.TensorShape(input_shape).as_list()
-
-        return tf.TensorShape([batch, 512])
+if __name__ == '__main__':
+    resnet50 = Resnet(image_size=224)
+    resnet50.build()
+    resnet50.load_pretrained(weights_path='/opt/project/project_code/data/pretrained_model/20190718/weights.h5')
+    resnet50.summary()
