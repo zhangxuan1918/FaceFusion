@@ -22,20 +22,20 @@ class FFTfMorphableModel(TfMorphableModel):
         params_mean_var['Pose_Para_mean'][:, 3:] = params_mean_var['Pose_Para_mean'][:, 3:] * 224. / 450.
         params_mean_var['Pose_Para_std'][:, 3:] = params_mean_var['Pose_Para_std'][:, 3:] * 224. / 450.
 
-        self.pose_mu = tf.constant(params_mean_var['Pose_Para_mean'], dtype=tf.float32)
-        self.pose_std = tf.constant(params_mean_var['Pose_Para_mean'], dtype=tf.float32)
+        self.stats_pose_mu = tf.constant(params_mean_var['Pose_Para_mean'], dtype=tf.float32)
+        self.stats_pose_std = tf.constant(params_mean_var['Pose_Para_mean'], dtype=tf.float32)
 
-        self.exp_mu = tf.constant(params_mean_var['Exp_Para_mean'], dtype=tf.float32)
-        self.exp_std = tf.constant(params_mean_var['Exp_Para_std'], dtype=tf.float32)
+        self.stats_exp_mu = tf.constant(params_mean_var['Exp_Para_mean'], dtype=tf.float32)
+        self.stats_exp_std = tf.constant(params_mean_var['Exp_Para_std'], dtype=tf.float32)
 
-        self.tex_mu = tf.constant(params_mean_var['Tex_Para_mean'], dtype=tf.float32)
-        self.tex_std = tf.constant(params_mean_var['Tex_Para_std'], dtype=tf.float32)
+        self.stats_tex_mu = tf.constant(params_mean_var['Tex_Para_mean'], dtype=tf.float32)
+        self.stats_tex_std = tf.constant(params_mean_var['Tex_Para_std'], dtype=tf.float32)
 
-        self.color_mu = tf.constant(params_mean_var['Color_Para_mean'], dtype=tf.float32)
-        self.color_std = tf.constant(params_mean_var['Color_Para_std'], dtype=tf.float32)
+        self.stats_color_mu = tf.constant(params_mean_var['Color_Para_mean'], dtype=tf.float32)
+        self.stats_color_std = tf.constant(params_mean_var['Color_Para_std'], dtype=tf.float32)
 
-        self.illum_mu = tf.constant(params_mean_var['Illum_Para_mean'], dtype=tf.float32)
-        self.illum_std = tf.constant(params_mean_var['Illum_Para_std'], dtype=tf.float32)
+        self.stats_illum_mu = tf.constant(params_mean_var['Illum_Para_mean'], dtype=tf.float32)
+        self.stats_illum_std = tf.constant(params_mean_var['Illum_Para_std'], dtype=tf.float32)
 
-        self.shape_mu = tf.constant(params_mean_var['Shape_Para_mean'], dtype=tf.float32)
-        self.shape_std = tf.constant(params_mean_var['Shape_Para_std'], dtype=tf.float32)
+        self.stats_shape_mu = tf.constant(params_mean_var['Shape_Para_mean'], dtype=tf.float32)
+        self.stats_shape_std = tf.constant(params_mean_var['Shape_Para_std'], dtype=tf.float32)

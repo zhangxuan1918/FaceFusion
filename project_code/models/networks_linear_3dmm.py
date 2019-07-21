@@ -103,12 +103,12 @@ class FaceNetLinear3DMM:
 
     def __call__(self, inputs, training=True):
         output = self.model(inputs)
-        x_illum = tf.expand_dims(output[:, 0: self.output_size_structure[1]], axis=1)
-        x_color = tf.expand_dims(output[:, self.output_size_structure[1]: self.output_size_structure[2]], axis=1)
-        x_tex = tf.expand_dims(output[:, self.output_size_structure[2]: self.output_size_structure[3]], axis=2)
-        x_shape = tf.expand_dims(output[:, self.output_size_structure[3]: self.output_size_structure[4]], axis=2)
-        x_exp = tf.expand_dims(output[:, self.output_size_structure[4]: self.output_size_structure[5]], axis=2)
-        x_pose = tf.expand_dims(output[:, self.output_size_structure[5]: self.output_size_structure[6]], axis=1)
+        x_illum = tf.expand_dims(output[:, 0: self.output_size_structure[0]], axis=1)
+        x_color = tf.expand_dims(output[:, self.output_size_structure[0]: self.output_size_structure[1]], axis=1)
+        x_tex = tf.expand_dims(output[:, self.output_size_structure[1]: self.output_size_structure[2]], axis=2)
+        x_shape = tf.expand_dims(output[:, self.output_size_structure[2]: self.output_size_structure[3]], axis=2)
+        x_exp = tf.expand_dims(output[:, self.output_size_structure[3]: self.output_size_structure[4]], axis=2)
+        x_pose = tf.expand_dims(output[:, self.output_size_structure[4]: self.output_size_structure[5]], axis=1)
 
         return {
             'illum': x_illum,

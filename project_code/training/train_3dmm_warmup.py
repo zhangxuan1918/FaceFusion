@@ -88,7 +88,8 @@ def train_3dmm_warmup(
                         tf.summary.scalar(param, metric.result(), step=optimizer.iterations)
                         metric.reset_states()
 
-            if batch_id > 0 and batch_id % 100 == 0:
+            # if batch_id > 0 and batch_id % 100 == 0:
+            if batch_id % 100 == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
@@ -121,9 +122,9 @@ def train_3dmm_warmup_one_step(
         est = face_model(images, training=True)
 
         est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.pose_std + bfm.pose_mu,
-            shapes_param=est.get('shape') * bfm.shape_std + bfm.shape_mu,
-            exps_param=est.get('exp') * bfm.exp_std + bfm.exp_mu,
+            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
             bfm=bfm
         )
 
@@ -135,7 +136,7 @@ def train_3dmm_warmup_one_step(
             loss_weights=loss_weights
         )
 
-        trainable_vars = face_model.model.trainable_vars
+        trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
         optimizer.apply_gradients(zip(train_gradient, trainable_vars))
 
@@ -167,9 +168,9 @@ def test_3dmm_warmup_one_step(
 
         est = face_model(images, training=False)
         est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.pose_std + bfm.pose_mu,
-            shapes_param=est.get('shape') * bfm.shape_std + bfm.shape_mu,
-            exps_param=est.get('exp') * bfm.exp_std + bfm.exp_mu,
+            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
             bfm=bfm
         )
 

@@ -9,39 +9,39 @@ import matplotlib.pyplot as plt
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-def split_3dmm_labels(values):
-    """
-    split labels into different 3dmm params
-    :param values:
-    :return:
-    """
-    # get different labels
-    # Shape_Para: [batch, 199, 1)
-    # Pose_Para: [batch, 1, 7]
-    # Exp_Para: [batch, 29, 1]
-    # Color_Para: [batch, 7, 1]
-    # Illum_Para: [batch, 1, 10]
-    # pt2d: (batch, 2, 68]
-    # Tex_Para: [batch, 199, 1]
-
-    shape_gt = tf.expand_dims(values[:, 0:199], axis=2)
-    pose_gt = tf.expand_dims(values[:, 199: 206], axis=1)
-    exp_gt = tf.expand_dims(values[:, 206: 235], axis=2)
-    color_gt = tf.expand_dims(values[:, 235: 242], axis=1)
-    illum_gt = tf.expand_dims(values[:, 242: 252], axis=1)
-    # reshape landmark
-    landmark_gt = tf.reshape(values[:, 252: 388], (-1, 2, 68))
-    tex_gt = tf.expand_dims(values[:, 388:], axis=2)
-
-    return {
-        'shape': shape_gt,
-        'pose': pose_gt,
-        'exp': exp_gt,
-        'color': color_gt,
-        'illum': illum_gt,
-        'tex': landmark_gt,
-        'landmark': tex_gt,
-    }
+# def split_3dmm_labels(values):
+#     """
+#     split labels into different 3dmm params
+#     :param values:
+#     :return:
+#     """
+#     # get different labels
+#     # Shape_Para: [batch, 199, 1)
+#     # Pose_Para: [batch, 1, 7]
+#     # Exp_Para: [batch, 29, 1]
+#     # Color_Para: [batch, 7, 1]
+#     # Illum_Para: [batch, 1, 10]
+#     # pt2d: (batch, 2, 68]
+#     # Tex_Para: [batch, 199, 1]
+#
+#     shape_gt = tf.expand_dims(values[:, 0:199], axis=2)
+#     pose_gt = tf.expand_dims(values[:, 199: 206], axis=1)
+#     exp_gt = tf.expand_dims(values[:, 206: 235], axis=2)
+#     color_gt = tf.expand_dims(values[:, 235: 242], axis=1)
+#     illum_gt = tf.expand_dims(values[:, 242: 252], axis=1)
+#     # reshape landmark
+#     landmark_gt = tf.reshape(values[:, 252: 388], (-1, 2, 68))
+#     tex_gt = tf.expand_dims(values[:, 388:], axis=2)
+#
+#     return {
+#         'shape': shape_gt,
+#         'pose': pose_gt,
+#         'exp': exp_gt,
+#         'color': color_gt,
+#         'illum': illum_gt,
+#         'tex': landmark_gt,
+#         'landmark': tex_gt,
+#     }
 
 
 def compute_landmarks(
@@ -62,20 +62,20 @@ def compute_landmarks(
         vertices = bfm.get_vertices(shapes_param[i], exps_param[i])
         transformed_vertices = affine_transform(vertices, poses_param[i][0, 6], poses_param[i][0, 0:3],
                                                 poses_param[i][0, 3:6])
-        landmarks_raw = tf.gather_nd(transformed_vertices, kpt_indices)
-        landmarks = tf.concat(
-            [tf.expand_dims(landmarks_raw[:, 0], axis=0), 224 - tf.expand_dims(landmarks_raw[:, 1], axis=0) - 1],
+        lm_3d = tf.gather_nd(transformed_vertices, kpt_indices)
+        lm_2d = tf.concat(
+            [tf.expand_dims(lm_3d[:, 0], axis=0), 224 - tf.expand_dims(lm_3d[:, 1], axis=0) - 1],
             axis=0)
-        batch_landmarks.append(landmarks)
+        batch_landmarks.append(lm_2d)
         return i + 1, n
 
     tf.while_loop(cond=cond, body=body, loop_vars=[start, end])
 
-    final_landmarks = tf.concat(batch_landmarks, axis=0)
+    landmarks_2d = tf.stack(batch_landmarks, axis=0)
 
-    tf.debugging.assert_shapes({final_landmarks: (end, 2, kpt_indices.shape()[0])})
+    tf.debugging.assert_shapes({landmarks_2d: (end, 2, tf.shape(kpt_indices)[0])})
 
-    return final_landmarks
+    return landmarks_2d
 
 
 def render_batch(
@@ -99,9 +99,9 @@ def render_batch(
 
     def body(i, n):
         image = render_2(
-            angles_grad=batch_angles_grad[i, 0:3],
-            scaling=batch_saling[i, 6],
-            t3d=batch_t3d[i, 3:6],
+            angles_grad=batch_angles_grad[i],
+            scaling=batch_saling[i],
+            t3d=batch_t3d[i],
             shape_param=batch_shape[i],
             exp_param=batch_exp[i],
             tex_param=batch_tex[i],
@@ -116,7 +116,7 @@ def render_batch(
 
     tf.while_loop(cond=cond, body=body, loop_vars=[start, end])
 
-    images = tf.concat(rendered, axis=0)
+    images = tf.stack(rendered, axis=0)
     tf.debugging.assert_shapes({images: (end, image_size, image_size, 3)})
     return images
 
@@ -134,17 +134,17 @@ def save_rendered_images_for_warmup_eval(
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
 
     # recover params
-    gt['pose'] = gt['pose'] * bfm.pose_std + bfm.pose_mu
-    gt['shape'] = gt['shape'] * bfm.shape_std + bfm.shape_mu
-    gt['exp'] = gt['exp'] * bfm.exp_std + bfm.exp_mu
-    gt['tex'] = gt['tex'] * bfm.tex_std + bfm.tex_mu
-    gt['color'] = gt['color'] * bfm.color_std + bfm.color_mu
-    gt['illum'] = gt['illum'] * bfm.illum_std + bfm.illum_mu
+    gt['pose'] = gt['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
+    gt['shape'] = gt['shape'] * bfm.stats_shape_std + bfm.stats_shape_mu
+    gt['exp'] = gt['exp'] * bfm.stats_exp_std + bfm.stats_exp_mu
+    gt['tex'] = gt['tex'] * bfm.stats_tex_std + bfm.stats_tex_mu
+    gt['color'] = gt['color'] * bfm.stats_color_std + bfm.stats_color_mu
+    gt['illum'] = gt['illum'] * bfm.stats_illum_std + bfm.stats_illum_mu
 
     images_gt = render_batch(
-        batch_angles_grad=gt['pos'][0:num_images_to_render, 0:3],
-        batch_saling=gt['pose'][0:num_images_to_render, 6],
-        batch_t3d=gt['pose'][0:num_images_to_render, 3:6],
+        batch_angles_grad=gt['pose'][0:num_images_to_render, 0, 0:3],
+        batch_saling=gt['pose'][0:num_images_to_render, 0, 6],
+        batch_t3d=gt['pose'][0:num_images_to_render, 0, 3:6],
         batch_shape=gt['shape'][0:num_images_to_render],
         batch_exp=gt['exp'][0:num_images_to_render],
         batch_tex=gt['tex'][0:num_images_to_render],
@@ -155,17 +155,17 @@ def save_rendered_images_for_warmup_eval(
     )
 
     # recover params
-    est['pose'] = est['pose'] * bfm.pose_std + bfm.pose_mu
-    est['shape'] = est['shape'] * bfm.shape_std + bfm.shape_mu
-    est['exp'] = est['exp'] * bfm.exp_std + bfm.exp_mu
-    est['tex'] = est['tex'] * bfm.tex_std + bfm.tex_mu
-    est['color'] = est['color'] * bfm.color_std + bfm.color_mu
-    est['illum'] = est['illum'] * bfm.illum_std + bfm.illum_mu
+    est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
+    est['shape'] = est['shape'] * bfm.stats_shape_std + bfm.stats_shape_mu
+    est['exp'] = est['exp'] * bfm.stats_exp_std + bfm.stats_exp_mu
+    est['tex'] = est['tex'] * bfm.stats_tex_std + bfm.stats_tex_mu
+    est['color'] = est['color'] * bfm.stats_color_std + bfm.stats_color_mu
+    est['illum'] = est['illum'] * bfm.stats_illum_std + bfm.stats_illum_mu
 
     images_est = render_batch(
-        batch_angles_grad=est['pos'][0:num_images_to_render, 0:3],
-        batch_saling=est['pose'][0:num_images_to_render, 6],
-        batch_t3d=est['pose'][0:num_images_to_render, 3:6],
+        batch_angles_grad=est['pose'][0:num_images_to_render, 0, 0:3],
+        batch_saling=est['pose'][0:num_images_to_render, 0, 6],
+        batch_t3d=est['pose'][0:num_images_to_render, 0, 3:6],
         batch_shape=est['shape'][0:num_images_to_render],
         batch_exp=est['exp'][0:num_images_to_render],
         batch_tex=est['tex'][0:num_images_to_render],
@@ -180,7 +180,7 @@ def save_rendered_images_for_warmup_eval(
 
         image_est = images_est[i].numpy().astype(np.uint8)
 
-        filename = os.path.join(eval_dir, '{batch_id}_rendered.jpg'.format(batch_id=batch_id))
+        filename = os.path.join(eval_dir, 'batch_id_{batch_id}_rendered.jpg'.format(batch_id=batch_id))
         save_images(
             images=[image_gt, image_est],
             landmarks=[gt['landmark'][i].numpy(), est['landmark'][i].numpy()],

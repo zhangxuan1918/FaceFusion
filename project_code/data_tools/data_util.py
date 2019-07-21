@@ -75,12 +75,12 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 
     # normalize data
-    sp = np.divide(np.subtract(sp, bfm.shape_mu.numpy()), bfm.shape_std.numpy())
-    ep = np.divide(np.subtract(ep, bfm.exp_mu.numpy()), bfm.exp_std.numpy())
-    tp = np.divide(np.subtract(tp, bfm.tex_mu.numpy()), bfm.tex_std.numpy())
-    cp = np.divide(np.subtract(cp, bfm.color_mu.numpy()), bfm.color_std.numpy())
-    ip = np.divide(np.subtract(ip, bfm.illum_mu.numpy()), bfm.illum_std.numpy())
-    pp = np.divide(np.subtract(pp, bfm.pose_mu.numpy()), bfm.pose_std.numpy())
+    sp = np.divide(np.subtract(sp, bfm.stats_shape_mu.numpy()), bfm.stats_shape_std.numpy())
+    ep = np.divide(np.subtract(ep, bfm.stats_exp_mu.numpy()), bfm.stats_exp_std.numpy())
+    tp = np.divide(np.subtract(tp, bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
+    cp = np.divide(np.subtract(cp, bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
+    ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
+    pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
 
     return \
         {
@@ -106,52 +106,52 @@ def load_3dmm_data_gen(
         yield image, mat_dict
 
 
-def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
-                        illum_param, tex_param, landmarks, output_size, input_size):
-    """
-    add mean and times std
-    reshape the params into right shape
-
-    :param: image: original image
-    :param: shape_param: shape=(199,) => (199, 1)
-    :param: pose_param: shape=(7,) => (1, 7)
-    :param: exp_param: shape=(29,) => (29, 1)
-    :param: color_param: shape=(7,) => (1, 7)
-    :param: illum_param: shape=(10,) => (1, 10)
-    :param: landmarks: shape=(2, 68) => (2, 68)
-    :param: tex_param: shape=(199,) => (199, 1)
-    :returns:
-        shape_para: (199, 1)
-        pose_para: (1, 7)
-        exp_para: (29, 1)
-        color_para: (1, 7)
-        illum_para: (1, 10)
-        landmarks: (2, 68)
-        tex_para: (199, 1)
-    """
-    # reshape
-    scale = 1.0 * output_size / input_size
-    shape_param = np.reshape(shape_param, (-1, 1))
-    pose_param = np.reshape(pose_param, (1, -1))
-    pose_param[0, 3:] = pose_param[0, 3:] * scale
-    exp_param = np.reshape(exp_param, (-1, 1))
-    color_param = np.reshape(color_param, (1, -1))
-    illum_param = np.reshape(illum_param, (1, -1))
-    landmarks = np.reshape(landmarks, (2, -1))
-    landmarks = landmarks * scale
-    tex_param = np.reshape(tex_param, (-1, 1))
-
-    shape_param = np.add(np.multiply(np.array(shape_param), params_mean_var['Shape_Para_var']),
-                         params_mean_var['Shape_Para_mean'])
-    pose_param = np.add(np.multiply(np.array(pose_param), params_mean_var['Pose_Para_var']),
-                        params_mean_var['Pose_Para_mean'])
-    exp_param = np.add(np.multiply(np.array(exp_param), params_mean_var['Exp_Para_var']),
-                       params_mean_var['Exp_Para_mean'])
-    color_param = np.add(np.multiply(np.array(color_param), params_mean_var['Color_Para_var']),
-                         params_mean_var['Color_Para_mean'])
-    illum_param = np.add(np.multiply(np.array(illum_param), params_mean_var['Illum_Para_var']),
-                         params_mean_var['Illum_Para_mean'])
-    tex_param = np.add(np.multiply(np.array(tex_param), params_mean_var['Tex_Para_var']),
-                       params_mean_var['Tex_Para_mean'])
-
-    return np.array(image), shape_param, pose_param, exp_param, color_param, illum_param, landmarks, tex_param
+# def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,
+#                         illum_param, tex_param, landmarks, output_size, input_size):
+#     """
+#     add mean and times std
+#     reshape the params into right shape
+#
+#     :param: image: original image
+#     :param: shape_param: shape=(199,) => (199, 1)
+#     :param: pose_param: shape=(7,) => (1, 7)
+#     :param: exp_param: shape=(29,) => (29, 1)
+#     :param: color_param: shape=(7,) => (1, 7)
+#     :param: illum_param: shape=(10,) => (1, 10)
+#     :param: landmarks: shape=(2, 68) => (2, 68)
+#     :param: tex_param: shape=(199,) => (199, 1)
+#     :returns:
+#         shape_para: (199, 1)
+#         pose_para: (1, 7)
+#         exp_para: (29, 1)
+#         color_para: (1, 7)
+#         illum_para: (1, 10)
+#         landmarks: (2, 68)
+#         tex_para: (199, 1)
+#     """
+#     # reshape
+#     scale = 1.0 * output_size / input_size
+#     shape_param = np.reshape(shape_param, (-1, 1))
+#     pose_param = np.reshape(pose_param, (1, -1))
+#     pose_param[0, 3:] = pose_param[0, 3:] * scale
+#     exp_param = np.reshape(exp_param, (-1, 1))
+#     color_param = np.reshape(color_param, (1, -1))
+#     illum_param = np.reshape(illum_param, (1, -1))
+#     landmarks = np.reshape(landmarks, (2, -1))
+#     landmarks = landmarks * scale
+#     tex_param = np.reshape(tex_param, (-1, 1))
+#
+#     shape_param = np.add(np.multiply(np.array(shape_param), params_mean_var['Shape_Para_var']),
+#                          params_mean_var['Shape_Para_mean'])
+#     pose_param = np.add(np.multiply(np.array(pose_param), params_mean_var['Pose_Para_var']),
+#                         params_mean_var['Pose_Para_mean'])
+#     exp_param = np.add(np.multiply(np.array(exp_param), params_mean_var['Exp_Para_var']),
+#                        params_mean_var['Exp_Para_mean'])
+#     color_param = np.add(np.multiply(np.array(color_param), params_mean_var['Color_Para_var']),
+#                          params_mean_var['Color_Para_mean'])
+#     illum_param = np.add(np.multiply(np.array(illum_param), params_mean_var['Illum_Para_var']),
+#                          params_mean_var['Illum_Para_mean'])
+#     tex_param = np.add(np.multiply(np.array(tex_param), params_mean_var['Tex_Para_var']),
+#                        params_mean_var['Tex_Para_mean'])
+#
+#     return np.array(image), shape_param, pose_param, exp_param, color_param, illum_param, landmarks, tex_param

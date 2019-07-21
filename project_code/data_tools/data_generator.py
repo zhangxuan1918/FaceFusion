@@ -69,7 +69,7 @@ def get_3dmm_warmup_data(
             'exp': tf.TensorShape([29, 1]),
             'color': tf.TensorShape([1, 7]),
             'illum': tf.TensorShape([1, 10]),
-            'tex': tf.TensorShape([199, 18]),
+            'tex': tf.TensorShape([199, 1]),
             'landmark': tf.TensorShape([2, 68])
         })
     )
