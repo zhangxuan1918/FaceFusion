@@ -31,7 +31,7 @@ def get_3dmm_warmup_data(
 
     g_train_data = partial(load_3dmm_data_gen, bfm, '300W_LP', train_image_paths, train_mat_paths)
     train_ds = tf.data.Dataset.from_generator(
-        g_train_data, output_types=(tf.float32, tf.string, {
+        g_train_data, output_types=(tf.float32, {
             'shape': tf.float32,
             'pose': tf.float32,
             'exp': tf.float32,
@@ -40,7 +40,7 @@ def get_3dmm_warmup_data(
             'tex': tf.float32,
             'landmark': tf.float32
         }),
-        output_shapes=(tf.TensorShape([224, 224, 3]), tf.TensorShape([]), {
+        output_shapes=(tf.TensorShape([224, 224, 3]), {
             'shape': tf.TensorShape([199, 1]),
             'pose': tf.TensorShape([1, 7]),
             'exp': tf.TensorShape([29, 1]),
@@ -53,8 +53,7 @@ def get_3dmm_warmup_data(
 
     g_test_data = partial(load_3dmm_data_gen, bfm, 'AFLW_2000', test_image_paths, test_mat_paths)
     test_ds = tf.data.Dataset.from_generator(
-        g_test_data,
-        output_types=(tf.float32, {
+        g_test_data, output_types=(tf.float32, {
             'shape': tf.float32,
             'pose': tf.float32,
             'exp': tf.float32,
