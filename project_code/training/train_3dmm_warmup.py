@@ -69,7 +69,7 @@ def train_3dmm_warmup(
             #     'tex': tex_gt,
             #     'landmark': lm_gt,
             # }
-            images, ground_truth = value
+            images, image_ids, ground_truth = value
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(
