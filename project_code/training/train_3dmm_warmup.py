@@ -69,7 +69,7 @@ def train_3dmm_warmup(
             #     'tex': tex_gt,
             #     'landmark': lm_gt,
             # }
-            images, image_ids, ground_truth = value
+            images, ground_truth = value
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(
@@ -80,7 +80,8 @@ def train_3dmm_warmup(
                     ground_truth=ground_truth,
                     metric=metric_train,
                     loss_types=loss_types,
-                    loss_weights=loss_weights
+                    loss_weights=loss_weights,
+                    step_id=int(ckpt.step),
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):
@@ -89,7 +90,7 @@ def train_3dmm_warmup(
                         metric.reset_states()
 
             # if batch_id > 0 and batch_id % 100 == 0:
-            if batch_id % 100 == 0:
+            if batch_id > 0 and batch_id % config.log_freq == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
@@ -116,7 +117,8 @@ def train_3dmm_warmup_one_step(
         ground_truth,
         metric: dict,
         loss_types: dict,
-        loss_weights: dict
+        loss_weights: dict,
+        step_id: int
 ):
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
@@ -135,6 +137,8 @@ def train_3dmm_warmup_one_step(
             loss_types=loss_types,
             loss_weights=loss_weights
         )
+
+        print('step={step_id}, loss={loss}'.format(step_id=step_id, loss=G_loss.numpy()))
 
         trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
