@@ -98,7 +98,7 @@ def load_3dmm_data_gen(
         image = load_image_3dmm(image_file=im_file)
         mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
 
-        yield image, mat_dict
+        yield image, im_file.split('/')[-1], mat_dict
 
 
 # def recover_3dmm_params(image, shape_param, pose_param, exp_param, color_param,

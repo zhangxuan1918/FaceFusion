@@ -30,6 +30,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
         metric[param].update_state(param_loss)
         G_loss += param_loss * loss_weights[param]
 
+        print('{0} = {1}'.format(param, param_loss.numpy()))
+
     return G_loss
 
 
