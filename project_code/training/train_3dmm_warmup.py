@@ -9,7 +9,6 @@ from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
 
 
 def train_3dmm_warmup(
-        numof_epochs: int,
         ckpt,
         manager,
         face_model,
@@ -53,7 +52,7 @@ def train_3dmm_warmup(
         'landmark': 10
     }
 
-    for epoch in range(numof_epochs):
+    for epoch in range(config.num_of_epochs):
         for batch_id, value in enumerate(train_ds):
             if batch_id % 100 == 0:
                 print('warm up training: batch={0}'.format(batch_id))

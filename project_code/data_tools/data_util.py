@@ -17,7 +17,7 @@ def load_image_3dmm(image_file: str):
     image = tf.io.read_file(image_file)
     image = tf.image.decode_jpeg(image, channels=3)
 
-    # resize image from (450, 450) to (224, 224)
+    # resize image to (224, 224)
     image = tf.image.resize(image, [224, 224])
     # normalize image to [-1, 1]
     image = (image / 127.5) - 1
@@ -99,3 +99,4 @@ def load_3dmm_data_gen(
         mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
 
         yield image, mat_dict
+

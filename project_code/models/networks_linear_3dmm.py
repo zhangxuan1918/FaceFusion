@@ -79,12 +79,13 @@ class FaceNetLinear3DMM:
             os.makedirs(self.model_dir_warm_up)
         if not os.path.exists(self.eval_dir_warm_up):
             os.makedirs(self.eval_dir_warm_up)
-        if not os.path.exists(self.model_dir_warm_up):
-            os.makedirs(self.model_dir)
-        if not os.path.exists(self.eval_dir_warm_up):
-            os.makedirs(self.eval_dir)
         if not os.path.exists(self.log_dir_warm_up):
             os.makedirs(self.log_dir_warm_up)
+
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+        if not os.path.exists(self.eval_dir):
+            os.makedirs(self.eval_dir)
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
@@ -137,14 +138,13 @@ class FaceNetLinear3DMM:
 
         return ckpt, manager
 
-    def _train_3dmm_warmup(self, numof_epochs):
+    def _train_3dmm_warmup(self):
 
         ckpt, manager = self.setup_3dmm_model()
 
         self.summary()
 
         train_3dmm_warmup(
-            numof_epochs=numof_epochs,
             ckpt=ckpt,
             manager=manager,
             face_model=self,
@@ -154,13 +154,13 @@ class FaceNetLinear3DMM:
             eval_dir=self.eval_dir_warm_up
         )
 
-    def train(self, numof_epochs_warmup, numof_epochs):
+    def train(self):
         if self.config_general.is_using_warmup:
             # use supervised learning
-            self._train_3dmm_warmup(numof_epochs_warmup)
-        self._train_3dmm(numof_epochs)
+            self._train_3dmm_warmup()
+        self._train_3dmm()
 
-    def _train_3dmm(self, numof_epochs):
+    def _train_3dmm(self):
         ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
         checkpoint_dir = self.model_dir
         manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_train.max_checkpoint_to_keep)
@@ -168,7 +168,6 @@ class FaceNetLinear3DMM:
         self.summary()
 
         train_3dmm(
-            numof_epochs=numof_epochs,
             ckpt=ckpt,
             manager=manager,
             face_model=self,

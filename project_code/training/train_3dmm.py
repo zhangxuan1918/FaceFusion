@@ -11,7 +11,6 @@ from training.opt import compute_landmarks, render_batch, save_rendered_images_f
 
 
 def train_3dmm(
-        numof_epochs: int,
         ckpt,
         manager,
         face_model,
@@ -25,20 +24,23 @@ def train_3dmm(
     metric_train = keras.metrics.Mean(name='loss_train', dtype=tf.float32)
     metric_test = keras.metrics.Mean(name='loss_test', dtype=tf.float32)
 
-    train_ds, test_ds = setup_3dmm_data()
+    train_ds, test_ds = setup_3dmm_data(
+        data_train_dir=config.data_train_dir,
+        data_test_dir=config.data_test_dir,
+        batch_size=config.batch_size
+    )
 
     optimizer = tf.optimizers.Adam(
         learning_rate=config.learning_rate,
         beta_1=config.beta_1
     )
 
-    for epoch in range(numof_epochs):
-        for batch_id, value in enumerate(train_ds):
+    for epoch in range(config.num_of_epochs):
+        for batch_id, images in enumerate(train_ds):
             if batch_id % 100 == 0:
                 print('training: batch={0}'.format(batch_id))
 
             ckpt.step.assign_add(1)
-            images, ground_truth = value
 
             with train_summary_writer.as_default():
 
@@ -61,7 +63,7 @@ def train_3dmm(
                     test_3dmm_one_step(
                         face_model=face_model,
                         bfm=bfm,
-                        images=images,
+                        test_ds=test_ds,
                         metric=metric_test,
                         batch_id=batch_id,
                         eval_dir=eval_dir,
@@ -84,10 +86,17 @@ def train_3dmm_one_step(
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
 
+        est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
+        est['shape'] = est['shape'] * bfm.stats_shape_std + bfm.stats_shape_mu
+        est['exp'] = est['exp'] * bfm.stats_exp_std + bfm.stats_exp_mu
+        est['tex'] = est['tex'] * bfm.stats_tex_std + bfm.stats_tex_mu
+        est['color'] = est['color'] * bfm.stats_color_std + bfm.stats_color_mu
+        est['illum'] = est['illum'] * bfm.stats_illum_std + bfm.stats_illum_mu
+
         images_rendered = render_batch(
-            batch_angles_grad=est['pos'][:, 0:3],
-            batch_saling=est['pose'][:, 6],
-            batch_t3d=est['pose'][:, 3:6],
+            batch_angles_grad=est['pose'][:, 0, 0:3],
+            batch_saling=est['pose'][:, 0, 6],
+            batch_t3d=est['pose'][:, 0, 3:6],
             batch_shape=est['shape'],
             batch_exp=est['exp'],
             batch_tex=est['tex'],
@@ -103,7 +112,9 @@ def train_3dmm_one_step(
             loss_type=loss_type
         )
 
-        trainable_vars = face_model.model.trainable_vars
+        print('step={step_id}, loss={loss}'.format(step_id=step_id, loss=G_loss.numpy()))
+
+        trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
         optimizer.apply_gradients(zip(train_gradient, trainable_vars))
 
@@ -111,45 +122,48 @@ def train_3dmm_one_step(
 def test_3dmm_one_step(
         face_model,
         bfm: FFTfMorphableModel,
-        images,
+        test_ds,
         metric,
         loss_type,
         eval_dir: str,
         batch_id: int
 ):
+    G_loss = 0
 
-    est = face_model(images, training=False)
-    est['landmark'] = compute_landmarks(
-        poses_param=est.get('pose'),
-        shapes_param=est.get('shape'),
-        exps_param=est.get('exp'),
-        bfm=bfm
-    )
+    for i, images in enumerate(test_ds):
+        est = face_model(images, training=False)
+        est['landmark'] = compute_landmarks(
+            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+            bfm=bfm
+        )
 
-    images_rendered = render_batch(
-        batch_angles_grad=est['pos'][:, 0:3],
-        batch_saling=est['pose'][:, 6],
-        batch_t3d=est['pose'][:, 3:6],
-        batch_shape=est['shape'],
-        batch_exp=est['exp'],
-        batch_tex=est['tex'],
-        batch_color=est['color'],
-        batch_illum=est['illum'],
-        image_size=224,
-        bfm=bfm
-    )
+        images_rendered = render_batch(
+            batch_angles_grad=est['pos'][:, 0, 0:3],
+            batch_saling=est['pose'][:, 0, 6],
+            batch_t3d=est['pose'][:, 0, 3:6],
+            batch_shape=est['shape'],
+            batch_exp=est['exp'],
+            batch_tex=est['tex'],
+            batch_color=est['color'],
+            batch_illum=est['illum'],
+            image_size=224,
+            bfm=bfm
+        )
 
-    loss_3dmm(
-        images=images,
-        images_rendered=images_rendered,
-        metric=metric,
-        loss_type=loss_type
-    )
+        G_loss += loss_3dmm(
+            images=images,
+            images_rendered=images_rendered,
+            metric=metric,
+            loss_type=loss_type
+        )
 
-    save_rendered_images_for_eval(
-        images=images,
-        rendered_images=images_rendered,
-        landmarks=est['landmark'],
-        eval_dir=eval_dir,
-        batch_id=batch_id
-    )
+        if i == 0:
+            save_rendered_images_for_eval(
+                images=images,
+                rendered_images=images_rendered,
+                landmarks=est['landmark'],
+                eval_dir=eval_dir,
+                batch_id=batch_id
+            )

@@ -4,15 +4,20 @@ from functools import partial
 
 import tensorflow as tf
 
-from data_tools.data_util import load_3dmm_data_gen
+from data_tools.data_util import load_3dmm_data_gen, load_image_3dmm
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
+def _get_files(folder, file_pattern):
+    folder = pathlib.Path(folder)
+    files = list(folder.glob(file_pattern))
+    files = [str(p) for p in files]
+    return files
+
+
 def _get_3dmm_warmup_data_paths(folder, image_suffix):
-    folder_pl = pathlib.Path(folder)
-    image_paths = list(folder_pl.glob(image_suffix))
-    image_paths = [str(p) for p in image_paths]
-    gt_paths = [p.replace('.jpg', '.mat') for p in image_paths]
+    image_paths = _get_files(folder=folder, file_pattern=image_suffix)
+    gt_paths = [p.replace(image_suffix, '.mat') for p in image_paths]
 
     return image_paths, gt_paths
 
@@ -72,5 +77,22 @@ def get_3dmm_warmup_data(
             'landmark': tf.TensorShape([2, 68])
         })
     )
+
+    return train_ds, test_ds
+
+
+def get_3dmm_data(
+    data_train_dir,
+    data_test_dir
+):
+    train_image_paths = _get_files(folder=data_train_dir, file_pattern='*.png')
+    random.shuffle(train_image_paths)
+    print('3dmm training data: {0}'.format(len(train_image_paths)))
+
+    test_image_paths = _get_files(folder=data_test_dir, file_pattern='*.png')
+    print('3dmm testing data: {0}'.format(len(test_image_paths)))
+
+    train_ds = tf.data.Dataset.from_tensor_slices(train_image_paths).map(load_image_3dmm)
+    test_ds = tf.data.Dataset.from_tensor_slices(test_image_paths).map(load_image_3dmm)
 
     return train_ds, test_ds
