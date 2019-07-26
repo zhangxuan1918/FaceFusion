@@ -38,8 +38,11 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
 
 
 def loss_3dmm(images, images_rendered, metric, loss_type):
+    # recover original images
+    images = (images + 1) * 127.5
     images_masked = tf.where(tf.greater(images_rendered, 0), images, images_rendered)
-    G_loss = loss_norm(est=images_rendered, gt=images_masked, loss_type=loss_type)
+    G_loss = loss_norm(est=images_rendered, gt=images_masked, loss_type=loss_type) + \
+        0.3 * loss_norm(est=images_rendered, gt=images, loss_type=loss_type)
 
     metric.update_state(G_loss)
     return G_loss

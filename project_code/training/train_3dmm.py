@@ -50,7 +50,8 @@ def train_3dmm(
                     optimizer=optimizer,
                     images=images,
                     metric=metric_train,
-                    loss_type=config.loss_type
+                    loss_type=config.loss_type,
+                    step_id=int(ckpt.step)
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):
@@ -80,7 +81,8 @@ def train_3dmm_one_step(
         optimizer,
         images,
         metric,
-        loss_type
+        loss_type: str,
+        step_id: int
 ):
 
     with tf.GradientTape() as gradient_type:
