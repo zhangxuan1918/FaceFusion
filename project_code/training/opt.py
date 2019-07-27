@@ -6,6 +6,7 @@ from tf_3dmm.mesh.render import render_2
 from tf_3dmm.mesh.transform import affine_transform
 import matplotlib.pyplot as plt
 
+from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
@@ -199,13 +200,13 @@ def save_rendered_images_for_eval(
         max_images_in_dir=10,
 ):
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
-
+    images += face_vgg2_input_mean
     for i in range(num_images_to_render):
         image_gt = images[i].numpy().astype(np.uint8)
 
         image_est = rendered_images[i].numpy().astype(np.uint8)
 
-        filename = os.path.join(eval_dir, '{batch_id}_rendered.jpg'.format(batch_id=batch_id))
+        filename = os.path.join(eval_dir, '{batch_id}_rendered_{i}.jpg'.format(batch_id=batch_id, i=i))
         save_images(
             images=[image_gt, image_est],
             landmarks=[None, landmarks[i]],

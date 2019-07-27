@@ -30,7 +30,7 @@ def config_train_warmup_settings() -> EasyDict:
 
     config['face_vgg_v2_path'] = '/opt/data/face_vgg_v2/weights.h5'
     config['log_freq'] = 100
-    config['eval_freq'] = 500
+    config['eval_freq'] = 100
 
     config['max_checkpoint_to_keep'] = 5
     config['data_train_dir'] = '/opt/data/300W_LP/'
@@ -51,10 +51,10 @@ def config_train_settings() -> EasyDict:
     config['loss_type'] = 'l2'
     config['max_checkpoint_to_keep'] = 5
     config['log_freq'] = 100
-    config['eval_freq'] = 500
+    config['eval_freq'] = 100
 
     config['num_of_epochs'] = 5
-    config['batch_size'] = 32
+    config['batch_size'] = 8
     config['learning_rate'] = 0.001
     config['beta_1'] = 0.9
 

@@ -58,7 +58,8 @@ def train_3dmm(
                     tf.summary.scalar('loss_train', metric_train.result(), step=optimizer.iterations)
                     metric_train.reset_states()
 
-            if batch_id > 0 and batch_id % 100 == 0:
+            if batch_id > 0 and batch_id % config.eval_freq == 0:
+            # if batch_id % 100 == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_one_step(
@@ -108,6 +109,7 @@ def train_3dmm_one_step(
             bfm=bfm
         )
         G_loss = loss_3dmm(
+            face_vgg2=face_model.face_vgg2,
             images=images,
             images_rendered=images_rendered,
             metric=metric,
@@ -142,7 +144,7 @@ def test_3dmm_one_step(
         )
 
         images_rendered = render_batch(
-            batch_angles_grad=est['pos'][:, 0, 0:3],
+            batch_angles_grad=est['pose'][:, 0, 0:3],
             batch_saling=est['pose'][:, 0, 6],
             batch_t3d=est['pose'][:, 0, 3:6],
             batch_shape=est['shape'],
@@ -155,6 +157,7 @@ def test_3dmm_one_step(
         )
 
         G_loss += loss_3dmm(
+            face_vgg2=face_model.face_vgg2,
             images=images,
             images_rendered=images_rendered,
             metric=metric,
