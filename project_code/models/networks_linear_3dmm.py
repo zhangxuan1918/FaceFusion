@@ -102,8 +102,8 @@ class FaceNetLinear3DMM:
             model_type='BFM'
         )
 
-    def __call__(self, inputs, training=True):
-        output = self.model(inputs)
+    def __call__(self, inputs, training=False):
+        output = self.model(inputs, training=training)
         x_illum = tf.expand_dims(output[:, 0: self.output_size_structure[0]], axis=1)
         x_color = tf.expand_dims(output[:, self.output_size_structure[0]: self.output_size_structure[1]], axis=1)
         x_tex = tf.expand_dims(output[:, self.output_size_structure[1]: self.output_size_structure[2]], axis=2)
@@ -161,6 +161,13 @@ class FaceNetLinear3DMM:
         self._train_3dmm()
 
     def _train_3dmm(self):
+        self.resnet50.unfreeze()
+        # we load face_vgg2 for computing loss for unsupervised learning
+        # face_vgg2 will not be trainable
+        self.face_vgg2 = Resnet(image_size=self.image_size)
+        self.face_vgg2.build()
+        self.face_vgg2.freeze()
+
         ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
         checkpoint_dir = self.model_dir
         manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_train.max_checkpoint_to_keep)

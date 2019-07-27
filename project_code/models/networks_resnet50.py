@@ -141,6 +141,9 @@ class Resnet:
 
         self.model = Model(inputs=inputs, outputs=x, name='Resnet50')
 
+    def __call__(self, inputs, training=False):
+        return self.model(inputs=inputs, training=training)
+
     def summary(self):
         print(self.model.summary())
 

@@ -2,6 +2,7 @@ import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 
+from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
@@ -19,8 +20,9 @@ def load_image_3dmm(image_file: str):
 
     # resize image to (224, 224)
     image = tf.image.resize(image, [224, 224])
-    # normalize image to [-1, 1]
-    image = (image / 127.5) - 1
+    # # normalize image to [-1, 1]
+    # image = (image / 127.5) - 1
+    image -= face_vgg2_input_mean
     return image
 
 

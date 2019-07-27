@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from data_tools.data_const import face_vgg2_input_mean
+
 
 def loss_norm(est, gt, loss_type):
     """
@@ -37,12 +39,16 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
     return G_loss
 
 
-def loss_3dmm(images, images_rendered, metric, loss_type):
-    # recover original images
-    images = (images + 1) * 127.5
-    images_masked = tf.where(tf.greater(images_rendered, 0), images, images_rendered)
-    G_loss = loss_norm(est=images_rendered, gt=images_masked, loss_type=loss_type) + \
-        0.3 * loss_norm(est=images_rendered, gt=images, loss_type=loss_type)
+def loss_3dmm(face_vgg2, images, images_rendered, metric, loss_type):
+    # original images
+    gt = face_vgg2(images, training=False)
+
+    # rendered images
+    images_rendered -= face_vgg2_input_mean
+    est = face_vgg2(images_rendered, training=False)
+
+    # compute loss
+    G_loss = loss_norm(est=est, gt=gt, loss_type=loss_type) + 0.3 * loss_norm(est=images_rendered, gt=images, loss_type=loss_type)
 
     metric.update_state(G_loss)
     return G_loss

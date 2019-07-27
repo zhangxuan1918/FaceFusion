@@ -89,7 +89,7 @@ def train_3dmm_warmup(
                         metric.reset_states()
 
             # if batch_id > 0 and batch_id % 100 == 0:
-            if batch_id > 0 and batch_id % config.log_freq == 0:
+            if batch_id > 0 and batch_id % config.eval_freq == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
