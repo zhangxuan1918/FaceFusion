@@ -249,4 +249,4 @@ def save_images(images, filename, titles, landmarks=None):
 
         ax.set_title(t)
         plt.savefig(filename)
-        plt.close()
+    plt.close(fig)

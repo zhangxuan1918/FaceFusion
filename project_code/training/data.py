@@ -17,8 +17,8 @@ def setup_3dmm_warmup_data(
         data_test_dir=data_test_dir
     )
 
-    train_ds = train_ds.repeat()
-    train_ds = train_ds.batch(batch_size)
+    # https://www.tensorflow.org/beta/guide/data
+    train_ds = train_ds.shuffle(buffer_size=128).batch(batch_size)
     train_ds = train_ds.prefetch(buffer_size=AUTOTUNE)
 
     test_ds = test_ds.batch(batch_size)
@@ -38,8 +38,7 @@ def setup_3dmm_data(
         data_test_dir=data_test_dir
     )
 
-    train_ds = train_ds.repeat()
-    train_ds = train_ds.batch(batch_size)
+    train_ds = train_ds.shuffle(buffer_size=128).batch(batch_size)
     train_ds = train_ds.prefetch(buffer_size=AUTOTUNE)
 
     test_ds = test_ds.batch(batch_size)

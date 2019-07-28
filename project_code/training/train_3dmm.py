@@ -51,7 +51,8 @@ def train_3dmm(
                     images=images,
                     metric=metric_train,
                     loss_type=config.loss_type,
-                    step_id=int(ckpt.step)
+                    epoch=epoch,
+                    step_id=batch_id
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):
@@ -83,6 +84,7 @@ def train_3dmm_one_step(
         images,
         metric,
         loss_type: str,
+        epoch: int,
         step_id: int
 ):
 
@@ -116,7 +118,7 @@ def train_3dmm_one_step(
             loss_type=loss_type
         )
 
-        print('step={step_id}, loss={loss}'.format(step_id=step_id, loss=G_loss.numpy()))
+        print('epoch: {epoch}/{step_id}, loss={loss}'.format(epoch=epoch, step_id=step_id, loss=G_loss.numpy()))
 
         trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
