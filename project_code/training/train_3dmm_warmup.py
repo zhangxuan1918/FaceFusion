@@ -129,7 +129,7 @@ def train_3dmm_warmup_one_step(
             bfm=bfm
         )
 
-        G_loss = loss_3dmm_warmup(
+        G_loss, loss_info = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
@@ -137,7 +137,7 @@ def train_3dmm_warmup_one_step(
             loss_weights=loss_weights
         )
 
-        print('step={step_id}, loss={loss}'.format(step_id=step_id, loss=G_loss.numpy()))
+        print('step={step_id}, {loss}'.format(step_id=step_id, loss=loss_info))
 
         trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
@@ -177,13 +177,15 @@ def test_3dmm_warmup_one_step(
             bfm=bfm
         )
 
-        G_loss += loss_3dmm_warmup(
+        one_loss, _ = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
             loss_weights=loss_weights
         )
+
+        G_loss += one_loss
 
         if i == 0:
             save_rendered_images_for_warmup_eval(

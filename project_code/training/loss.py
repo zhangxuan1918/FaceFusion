@@ -22,6 +22,7 @@ def loss_norm(est, gt, loss_type):
 def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict):
 
     G_loss = 0
+    loss_info = ''
     for param in gt:
 
         param_loss = loss_norm(
@@ -29,6 +30,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
             gt=gt[param],
             loss_type=loss_types[param]
         )
+
+        loss_info += '%s: %.3f(%d); ' % (param, param_loss.numpy(), loss_weights[param])
         metric[param].update_state(param_loss)
 
         if param == 'landmark':
@@ -36,7 +39,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
             param_loss /= 100.
         G_loss += param_loss * loss_weights[param]
 
-    return G_loss
+    loss_info = ('total loss: %.3f; ' % G_loss.numpy()) + loss_info
+    return G_loss, loss_info
 
 
 def loss_3dmm(face_vgg2, images, images_rendered, metric, loss_type):
