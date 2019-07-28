@@ -11,7 +11,7 @@ def config_general_settings() -> EasyDict:
     config['dim_shape'] = 199
     config['dim_exp'] = 29
     config['dim_pose'] = 7
-    config['save_dir'] = '/opt/project/project_code/data/face_3dmm_models/20190726/'
+    config['save_dir'] = '/opt/project/project_code/data/face_3dmm_models/20190727/'
     config['bfm_dir'] = '/opt/data/BFM/BFM.mat'
 
     return config

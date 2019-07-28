@@ -54,51 +54,52 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
     :param: image_rescaled_size: 224
     :return:
     """
-    mat_data = sio.loadmat(mat_file)
 
-    sp = mat_data['Shape_Para']
-    ep = mat_data['Exp_Para']
-    tp = mat_data['Tex_Para']
-    cp = mat_data['Color_Para']
-    ip = mat_data['Illum_Para']
-    pp = mat_data['Pose_Para']
+    def _read_mat(mat_file):
+        mat_data = sio.loadmat(mat_file.numpy())
 
-    if data_name == '300W_LP':
-        lm = mat_data['pt2d'] * 224 / 450
-    elif data_name == 'AFLW_2000':
-        lm = mat_data['pt3d_68'][0:2, :] * 224 / 450
-    else:
-        raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
+        sp = mat_data['Shape_Para']
+        ep = mat_data['Exp_Para']
+        tp = mat_data['Tex_Para']
+        cp = mat_data['Color_Para']
+        ip = mat_data['Illum_Para']
+        pp = mat_data['Pose_Para']
 
-    # normalize data
-    sp = np.divide(np.subtract(sp, bfm.stats_shape_mu.numpy()), bfm.stats_shape_std.numpy())
-    ep = np.divide(np.subtract(ep, bfm.stats_exp_mu.numpy()), bfm.stats_exp_std.numpy())
-    tp = np.divide(np.subtract(tp, bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
-    cp = np.divide(np.subtract(cp, bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
-    ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
-    pp[0, 3:] = pp[0, 3:] * 224 / 450
-    pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
+        if data_name == '300W_LP':
+            lm = mat_data['pt2d'] * 224 / 450
+        elif data_name == 'AFLW_2000':
+            lm = mat_data['pt3d_68'][0:2, :] * 224 / 450
+        else:
+            raise Exception('data_name not supported: {0}; only 300W_LP and AFLW_2000 supported'.format(data_name))
 
-    return \
-        {
-            'shape': sp,
-            'pose': pp,
-            'exp': ep,
-            'color': cp,
-            'illum': ip,
-            'tex': tp,
-            'landmark': lm
-        }
+        # normalize data
+        sp = np.divide(np.subtract(sp, bfm.stats_shape_mu.numpy()), bfm.stats_shape_std.numpy())
+        ep = np.divide(np.subtract(ep, bfm.stats_exp_mu.numpy()), bfm.stats_exp_std.numpy())
+        tp = np.divide(np.subtract(tp, bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
+        cp = np.divide(np.subtract(cp, bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
+        ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
+        pp[0, 3:] = pp[0, 3:] * 224 / 450
+        pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
+
+        return sp, pp, ep, cp, ip, tp, lm
+
+    sp, pp, ep, cp, ip, tp, lm = tf.py_function(_read_mat, [mat_file], [tf.float32] * 7)
+    return {
+                'shape': sp,
+                'pose': pp,
+                'exp': ep,
+                'color': cp,
+                'illum': ip,
+                'tex': tp,
+                'landmark': lm
+            }
 
 
-def load_3dmm_data_gen(
+def load_3dmm_data(
         bfm: FFTfMorphableModel,
         data_name: str,
         image_file: str,
         mat_file: str):
-    for im_file, mat_file in zip(image_file, mat_file):
-        image = load_image_3dmm(image_file=im_file)
-        mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
-
-        yield image, mat_dict
-
+    image = load_image_3dmm(image_file=image_file)
+    mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
+    return image, mat_dict
