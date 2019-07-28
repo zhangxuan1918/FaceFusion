@@ -33,7 +33,7 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
 
         if param == 'landmark':
             # we didn't rescale landmarks, thus we have to resale the loss
-            param_loss /= 450.
+            param_loss /= 100.
         G_loss += param_loss * loss_weights[param]
 
     return G_loss
