@@ -17,9 +17,12 @@ def _get_files(folder, file_pattern):
 
 def _get_3dmm_warmup_data_paths(folder, image_suffix):
     image_paths = _get_files(folder=folder, file_pattern=image_suffix)
-    gt_paths = [p.replace(image_suffix, '.mat') for p in image_paths]
+    gt_paths = [p.replace('.jpg', '.mat') for p in image_paths]
 
-    return image_paths, gt_paths
+    # shuffle data
+    combined = list(zip(image_paths, gt_paths))
+    random.shuffle(combined)
+    return zip(*combined)
 
 
 def get_3dmm_warmup_data(
@@ -28,7 +31,6 @@ def get_3dmm_warmup_data(
         data_test_dir
 ):
     train_image_paths, train_mat_paths = _get_3dmm_warmup_data_paths(folder=data_train_dir, image_suffix='*/*.jpg')
-    random.shuffle(train_image_paths)
     print('3dmm warmup training data: {0}'.format(len(train_image_paths)))
 
     test_image_paths, test_mat_paths = _get_3dmm_warmup_data_paths(folder=data_test_dir, image_suffix='*.jpg')

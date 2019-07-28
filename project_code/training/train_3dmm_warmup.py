@@ -188,6 +188,7 @@ def test_3dmm_warmup_one_step(
         if i == 0:
             save_rendered_images_for_warmup_eval(
                 bfm=bfm,
+                images=images,
                 gt=ground_truth,
                 est=est,
                 image_size=render_image_size,

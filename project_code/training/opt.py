@@ -124,6 +124,7 @@ def render_batch(
 
 def save_rendered_images_for_warmup_eval(
         bfm: FFTfMorphableModel,
+        images,
         gt,
         est,
         image_size,
@@ -133,27 +134,8 @@ def save_rendered_images_for_warmup_eval(
         max_images_in_dir=10,
 ):
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
-
-    # recover params
-    gt['pose'] = gt['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
-    gt['shape'] = gt['shape'] * bfm.stats_shape_std + bfm.stats_shape_mu
-    gt['exp'] = gt['exp'] * bfm.stats_exp_std + bfm.stats_exp_mu
-    gt['tex'] = gt['tex'] * bfm.stats_tex_std + bfm.stats_tex_mu
-    gt['color'] = gt['color'] * bfm.stats_color_std + bfm.stats_color_mu
-    gt['illum'] = gt['illum'] * bfm.stats_illum_std + bfm.stats_illum_mu
-
-    images_gt = render_batch(
-        batch_angles_grad=gt['pose'][0:num_images_to_render, 0, 0:3],
-        batch_saling=gt['pose'][0:num_images_to_render, 0, 6],
-        batch_t3d=gt['pose'][0:num_images_to_render, 0, 3:6],
-        batch_shape=gt['shape'][0:num_images_to_render],
-        batch_exp=gt['exp'][0:num_images_to_render],
-        batch_tex=gt['tex'][0:num_images_to_render],
-        batch_color=gt['color'][0:num_images_to_render],
-        batch_illum=gt['illum'][0:num_images_to_render],
-        image_size=image_size,
-        bfm=bfm
-    )
+    # recover original input
+    images += face_vgg2_input_mean
 
     # recover params
     est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
@@ -177,7 +159,7 @@ def save_rendered_images_for_warmup_eval(
     )
 
     for i in range(num_images_to_render):
-        image_gt = images_gt[i].numpy().astype(np.uint8)
+        image_gt = images[i].numpy().astype(np.uint8)
 
         image_est = images_est[i].numpy().astype(np.uint8)
 

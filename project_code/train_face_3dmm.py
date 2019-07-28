@@ -4,7 +4,7 @@ from training.config_util import EasyDict
 
 def config_general_settings() -> EasyDict:
     config = EasyDict()
-    config['is_using_warmup'] = False
+    config['is_using_warmup'] = True
     config['dim_illum'] = 10
     config['dim_color'] = 7
     config['dim_tex'] = 199
