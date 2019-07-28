@@ -163,7 +163,7 @@ def save_rendered_images_for_warmup_eval(
 
         image_est = images_est[i].numpy().astype(np.uint8)
 
-        filename = os.path.join(eval_dir, 'batch_id_{batch_id}_rendered.jpg'.format(batch_id=batch_id))
+        filename = os.path.join(eval_dir, 'batch_id_{batch_id}_rendered_{i}.jpg'.format(batch_id=batch_id, i=i))
         save_images(
             images=[image_gt, image_est],
             landmarks=[gt['landmark'][i].numpy(), est['landmark'][i].numpy()],
