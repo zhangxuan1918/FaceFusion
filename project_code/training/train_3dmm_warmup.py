@@ -43,9 +43,9 @@ def train_3dmm_warmup(
     }
 
     loss_weights = {
-        'shape': 10,
-        'pose': 10,
-        'exp': 5,
+        'shape': 20,
+        'pose': 40,
+        'exp': 20,
         'color': 5,
         'illum': 5,
         'tex': 5,
