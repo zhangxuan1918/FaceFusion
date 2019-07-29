@@ -35,7 +35,7 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
 
         if param == 'landmark':
             # we didn't rescale landmarks, thus we have to resale the loss
-            param_loss /= 100.
+            param_loss /= 450.
         G_loss += param_loss * loss_weights[param]
 
         loss_info += '%s: %.3f(%d); ' % (param, param_loss.numpy(), loss_weights[param])
@@ -52,7 +52,9 @@ def loss_3dmm(face_vgg2, images, images_rendered, metric, loss_type):
     est = face_vgg2(images_rendered, training=False)
 
     # compute loss
-    G_loss = loss_norm(est=est, gt=gt, loss_type=loss_type) + 0.3 * loss_norm(est=images_rendered, gt=images, loss_type=loss_type)
-
+    G_loss_image = loss_norm(est=images_rendered, gt=images, loss_type=loss_type)
+    G_loss_face_vgg2 = loss_norm(est=est, gt=gt, loss_type=loss_type)
+    G_loss = G_loss_face_vgg2 + 0.3 * G_loss_image
+    loss_info = 'total loss: %.3f; image loss: %.3f; feature loss: %.3f' % (G_loss.numpy(), G_loss_image.numpy(), G_loss_face_vgg2.numpy())
     metric.update_state(G_loss)
-    return G_loss
+    return G_loss, loss_info

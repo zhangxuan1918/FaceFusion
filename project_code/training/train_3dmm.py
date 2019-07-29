@@ -110,7 +110,7 @@ def train_3dmm_one_step(
             image_size=224,
             bfm=bfm
         )
-        G_loss = loss_3dmm(
+        G_loss, loss_info = loss_3dmm(
             face_vgg2=face_model.face_vgg2,
             images=images,
             images_rendered=images_rendered,
@@ -118,7 +118,7 @@ def train_3dmm_one_step(
             loss_type=loss_type
         )
 
-        print('epoch: {epoch}/{step_id}, loss={loss}'.format(epoch=epoch, step_id=step_id, loss=G_loss.numpy()))
+        print('epoch: {epoch}/{step_id}, {loss}'.format(epoch=epoch, step_id=step_id, loss=loss_info))
 
         trainable_vars = face_model.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
@@ -138,10 +138,18 @@ def test_3dmm_one_step(
 
     for i, images in enumerate(test_ds):
         est = face_model(images, training=False)
+
+        est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
+        est['shape'] = est['shape'] * bfm.stats_shape_std + bfm.stats_shape_mu
+        est['exp'] = est['exp'] * bfm.stats_exp_std + bfm.stats_exp_mu
+        est['tex'] = est['tex'] * bfm.stats_tex_std + bfm.stats_tex_mu
+        est['color'] = est['color'] * bfm.stats_color_std + bfm.stats_color_mu
+        est['illum'] = est['illum'] * bfm.stats_illum_std + bfm.stats_illum_mu
+
         est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
-            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
-            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+            poses_param=est.get('pose'),
+            shapes_param=est.get('shape'),
+            exps_param=est.get('exp'),
             bfm=bfm
         )
 
@@ -158,7 +166,7 @@ def test_3dmm_one_step(
             bfm=bfm
         )
 
-        G_loss += loss_3dmm(
+        one_loss, _ = loss_3dmm(
             face_vgg2=face_model.face_vgg2,
             images=images,
             images_rendered=images_rendered,
@@ -166,6 +174,7 @@ def test_3dmm_one_step(
             loss_type=loss_type
         )
 
+        G_loss += one_loss
         if i == 0:
             save_rendered_images_for_eval(
                 images=images,

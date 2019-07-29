@@ -37,7 +37,7 @@ def config_train_warmup_settings() -> EasyDict:
     config['data_test_dir'] = '/opt/data/AFLW2000/'
     config['data_mean_std'] = '/opt/data/300W_LP_stats/stats_300W_LP.npz'
 
-    config['num_of_epochs'] = 3
+    config['num_of_epochs'] = 0
     config['batch_size'] = 32
     config['learning_rate'] = 0.001
     config['beta_1'] = 0.9
@@ -51,7 +51,7 @@ def config_train_settings() -> EasyDict:
     config['loss_type'] = 'l2'
     config['max_checkpoint_to_keep'] = 5
     config['log_freq'] = 100
-    config['eval_freq'] = 100
+    config['eval_freq'] = 10
 
     config['num_of_epochs'] = 3
     config['batch_size'] = 8

@@ -17,7 +17,6 @@ class FaceNetLinear3DMM:
         """
 
         :param config_general:
-             is_using_warmup: boolean
              dim_illum: 10
              dim_color: 7
              dim_tex: 199
@@ -155,9 +154,7 @@ class FaceNetLinear3DMM:
         )
 
     def train(self):
-        if self.config_general.is_using_warmup:
-            # use supervised learning
-            self._train_3dmm_warmup()
+        self._train_3dmm_warmup()
         self._train_3dmm()
 
     def _train_3dmm(self):
