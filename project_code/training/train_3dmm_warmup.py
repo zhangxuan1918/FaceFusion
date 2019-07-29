@@ -44,7 +44,7 @@ def train_3dmm_warmup(
 
     loss_weights = {
         'shape': 20,
-        'pose': 40,
+        'pose': 20,
         'exp': 20,
         'color': 5,
         'illum': 5,
@@ -53,7 +53,7 @@ def train_3dmm_warmup(
     }
     is_use_loss_landmark = False
     for epoch in range(config.num_of_epochs):
-        if epoch == 2:
+        if epoch == 1:
             face_model.resnet50.unfreeze()
             face_model.summary()
             is_use_loss_landmark = True
