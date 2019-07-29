@@ -51,11 +51,13 @@ def train_3dmm_warmup(
         'tex': 5,
         'landmark': 10
     }
-
+    is_use_loss_landmark = False
     for epoch in range(config.num_of_epochs):
-        if epoch == 1:
+        if epoch == 2:
             face_model.resnet50.unfreeze()
             face_model.summary()
+            is_use_loss_landmark = True
+
         for batch_id, value in enumerate(train_ds):
             if batch_id % 100 == 0:
                 print('warm up training: batch={0}'.format(batch_id))
@@ -85,6 +87,7 @@ def train_3dmm_warmup(
                     loss_weights=loss_weights,
                     epoch=epoch,
                     step_id=batch_id,
+                    is_use_loss_landmark=is_use_loss_landmark
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):
@@ -105,7 +108,8 @@ def train_3dmm_warmup(
                         loss_weights=loss_weights,
                         render_image_size=224,
                         step_id=int(ckpt.step),
-                        eval_dir=eval_dir
+                        eval_dir=eval_dir,
+                        is_use_loss_landmark=True
                     )
 
                     save_path = manager.save()
@@ -122,24 +126,27 @@ def train_3dmm_warmup_one_step(
         loss_types: dict,
         loss_weights: dict,
         epoch: int,
-        step_id: int
+        step_id: int,
+        is_use_loss_landmark: bool
 ):
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
 
-        est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
-            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
-            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
-            bfm=bfm
-        )
+        if is_use_loss_landmark:
+            est['landmark'] = compute_landmarks(
+                poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+                shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+                exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+                bfm=bfm
+            )
 
         G_loss, loss_info = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
+            is_use_loss_landmark=is_use_loss_landmark
         )
 
         print('epoch: {epoch}/{step_id}, {loss}'.format(epoch=epoch, step_id=step_id, loss=loss_info))
@@ -158,7 +165,8 @@ def test_3dmm_warmup_one_step(
         loss_weights: dict,
         render_image_size,
         eval_dir: str,
-        step_id: int
+        step_id: int,
+        is_use_loss_landmark: bool
 ):
     G_loss = 0
     for i, value in enumerate(test_ds):
@@ -175,19 +183,22 @@ def test_3dmm_warmup_one_step(
         images, ground_truth = value
 
         est = face_model(images, training=False)
-        est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
-            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
-            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
-            bfm=bfm
-        )
+
+        if is_use_loss_landmark:
+            est['landmark'] = compute_landmarks(
+                poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+                shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+                exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+                bfm=bfm
+            )
 
         one_loss, _ = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
+            is_use_loss_landmark=is_use_loss_landmark
         )
 
         G_loss += one_loss

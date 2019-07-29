@@ -19,11 +19,14 @@ def loss_norm(est, gt, loss_type):
         raise Exception('unsupported loss_type={0}'.format(loss_type))
 
 
-def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict):
+def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict, is_use_loss_landmark: bool):
 
     G_loss = 0
     loss_info = ''
     for param in gt:
+
+        if not is_use_loss_landmark and param == 'landmark':
+            continue
 
         param_loss = loss_norm(
             est=est[param],
