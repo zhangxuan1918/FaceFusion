@@ -34,7 +34,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
             loss_type=loss_types[param]
         )
 
-        metric[param].update_state(param_loss)
+        if param in metric:
+            metric[param].update_state(param_loss)
 
         if param == 'landmark':
             # we didn't rescale landmarks, thus we have to resale the loss
