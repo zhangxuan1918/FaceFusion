@@ -5,7 +5,7 @@ from training.config_util import EasyDict
 from training.data import setup_3dmm_warmup_data
 from training.log import setup_summary
 from training.loss import loss_3dmm_warmup
-from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
+from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval, random_translate
 
 
 def train_3dmm_warmup(
@@ -74,6 +74,15 @@ def train_3dmm_warmup(
             #     'landmark': lm_gt,
             # }
             images, ground_truth = value
+            # random translate images
+            # TODO: check if this works
+            images, ground_truth = random_translate(
+                images=images,
+                ground_truth=ground_truth,
+                target_size=config.input_image_size,
+                batch_size=config.batch_size,
+                bfm=bfm
+            )
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(

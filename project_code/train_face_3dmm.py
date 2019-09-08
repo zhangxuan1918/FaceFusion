@@ -31,6 +31,7 @@ def config_train_warmup_settings() -> EasyDict:
     config['face_vgg_v2_path'] = '/opt/data/face_vgg_v2/weights.h5'
     config['log_freq'] = 100
     config['eval_freq'] = 1000
+    config['input_image_size'] = 224
 
     config['max_checkpoint_to_keep'] = 5
     config['data_train_dir'] = '/opt/data/300W_LP/'

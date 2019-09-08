@@ -10,39 +10,28 @@ from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-# def split_3dmm_labels(values):
-#     """
-#     split labels into different 3dmm params
-#     :param values:
-#     :return:
-#     """
-#     # get different labels
-#     # Shape_Para: [batch, 199, 1)
-#     # Pose_Para: [batch, 1, 7]
-#     # Exp_Para: [batch, 29, 1]
-#     # Color_Para: [batch, 7, 1]
-#     # Illum_Para: [batch, 1, 10]
-#     # pt2d: (batch, 2, 68]
-#     # Tex_Para: [batch, 199, 1]
-#
-#     shape_gt = tf.expand_dims(values[:, 0:199], axis=2)
-#     pose_gt = tf.expand_dims(values[:, 199: 206], axis=1)
-#     exp_gt = tf.expand_dims(values[:, 206: 235], axis=2)
-#     color_gt = tf.expand_dims(values[:, 235: 242], axis=1)
-#     illum_gt = tf.expand_dims(values[:, 242: 252], axis=1)
-#     # reshape landmark
-#     landmark_gt = tf.reshape(values[:, 252: 388], (-1, 2, 68))
-#     tex_gt = tf.expand_dims(values[:, 388:], axis=2)
-#
-#     return {
-#         'shape': shape_gt,
-#         'pose': pose_gt,
-#         'exp': exp_gt,
-#         'color': color_gt,
-#         'illum': illum_gt,
-#         'tex': landmark_gt,
-#         'landmark': tex_gt,
-#     }
+def random_translate(images, ground_truth, batch_size, target_size, bfm: FFTfMorphableModel):
+    # random translate images
+    tx = tf.random.uniform(
+        shape=[batch_size],
+        minval=0,
+        maxval=32,
+        dtype=tf.dtypes.int32
+    )
+    ty = tf.random.uniform(
+        shape=[batch_size],
+        minval=0,
+        maxval=32,
+        dtype=tf.dtypes.int32
+    )
+
+    delta_m = tf.zeros([batch_size, 8])
+    delta_m[:, 6] = tf.math.divide(ty, bfm.stats_pose_mu[6])
+    delta_m[:, 7] = tf.math.divide(tx, bfm.stats_pose_mu[7])
+
+    ground_truth['pose'] = ground_truth['pose'] - delta_m
+    images = tf.image.crop_to_bounding_box(images, tx, ty, target_size, target_size)
+    return images, ground_truth
 
 
 def compute_landmarks(
