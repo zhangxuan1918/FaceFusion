@@ -22,6 +22,7 @@ def train_3dmm_warmup(
     )
     train_ds, test_ds = setup_3dmm_warmup_data(
         bfm=bfm,
+        image_size=config.input_image_size,
         batch_size=config.batch_size,
         data_train_dir=config.data_train_dir,
         data_test_dir=config.data_test_dir
@@ -43,21 +44,16 @@ def train_3dmm_warmup(
     }
 
     loss_weights = {
-        'shape': 20,
-        'pose': 20,
-        'exp': 20,
+        'shape': 10,
+        'pose': 10,
+        'exp': 10,
         'color': 5,
         'illum': 5,
         'tex': 5,
         'landmark': 10
     }
-    is_use_loss_landmark = False
-    for epoch in range(config.num_of_epochs):
-        if epoch == 1:
-            face_model.resnet50.unfreeze()
-            face_model.summary()
-            is_use_loss_landmark = True
 
+    for epoch in range(config.num_of_epochs):
         for batch_id, value in enumerate(train_ds):
             if batch_id % 100 == 0:
                 print('warm up training: batch={0}'.format(batch_id))
@@ -96,7 +92,7 @@ def train_3dmm_warmup(
                     loss_weights=loss_weights,
                     epoch=epoch,
                     step_id=batch_id,
-                    is_use_loss_landmark=is_use_loss_landmark
+                    is_use_loss_landmark=True
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):

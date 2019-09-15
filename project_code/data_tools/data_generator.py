@@ -28,8 +28,9 @@ def _get_3dmm_warmup_data_paths(folder, image_suffix):
 
 def get_3dmm_warmup_data(
         bfm: FFTfMorphableModel,
-        data_train_dir,
-        data_test_dir
+        image_size: int,
+        data_train_dir: str,
+        data_test_dir: str
 ):
     train_image_paths, train_mat_paths = _get_3dmm_warmup_data_paths(folder=data_train_dir, image_suffix='*/*.jpg')
     print('3dmm warmup training data: {0}'.format(len(train_image_paths)))
@@ -37,11 +38,11 @@ def get_3dmm_warmup_data(
     test_image_paths, test_mat_paths = _get_3dmm_warmup_data_paths(folder=data_test_dir, image_suffix='*.jpg')
     print('3dmm warmup testing data: {0}'.format(len(test_image_paths)))
 
-    g_train_data = partial(load_3dmm_data, bfm, '300W_LP')
+    g_train_data = partial(load_3dmm_data, bfm, image_size, '300W_LP')
 
     train_ds = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mat_paths)).map(g_train_data)
 
-    g_test_data = partial(load_3dmm_data, bfm, 'AFLW_2000')
+    g_test_data = partial(load_3dmm_data, bfm, image_size, 'AFLW_2000')
     test_ds = tf.data.Dataset.from_tensor_slices((test_image_paths, test_mat_paths)).map(g_test_data)
 
     return train_ds, test_ds

@@ -6,7 +6,7 @@ from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-def load_image_3dmm(image_file: str):
+def load_image_3dmm(image_size: int, image_file: str):
     """
     load and preprocess images for 3dmm
     original image size (450, 450)
@@ -19,10 +19,10 @@ def load_image_3dmm(image_file: str):
     image = tf.image.decode_jpeg(image, channels=3)
 
     # resize image to (224, 224)
-    image = tf.image.resize(image, [224, 224])
+    image = tf.image.resize(image, [image_size, image_size])
     # # normalize image to [-1, 1]
-    # image = (image / 127.5) - 1
-    image -= face_vgg2_input_mean
+    image = (image / 127.5) - 1
+    # image -= face_vgg2_input_mean
     return image
 
 
@@ -38,7 +38,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         # Color_Para: shape=(1, 7)
         # Illum_Para: shape=(1, 10)
         # pt2d: shape=(2, 68)
-        # Tex_Para: shape=(199, 1)
+        # Tex_Para: shape=(40, 1)
     AFLW_200 data set
         # Shape_Para: shape=(199, 1)
         # Pose_Para: shape=(1, 7)
@@ -46,12 +46,14 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         # Color_Para: shape=(1, 7)
         # Illum_Para: shape=(1, 10)
         # pt3d_68: shape=(3, 68)
-        # Tex_Para: shape=(199, 1)
+        # Tex_Para: shape=(40, 1)
     total params: 587
     :param: data_name
     :param: label_file:
     :param: image_original_size: 450
-    :param: image_rescaled_size: 224
+    :param: image_rescaled_size:
+            * training 224+32 = 256
+            * testing  224
     :return:
     """
 
@@ -60,13 +62,13 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
 
         sp = mat_data['Shape_Para']
         ep = mat_data['Exp_Para']
-        tp = mat_data['Tex_Para']
+        tp = mat_data['Tex_Para'][:40, :]
         cp = mat_data['Color_Para']
         ip = mat_data['Illum_Para']
         pp = mat_data['Pose_Para']
 
         if data_name == '300W_LP':
-            lm = mat_data['pt2d'] * 224 / 450
+            lm = mat_data['pt2d'] * 256 / 450
         elif data_name == 'AFLW_2000':
             lm = mat_data['pt3d_68'][0:2, :] * 224 / 450
         else:
@@ -78,7 +80,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
         tp = np.divide(np.subtract(tp, bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
         cp = np.divide(np.subtract(cp, bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
         ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
-        pp[0, 3:] = pp[0, 3:] * 224 / 450
+        pp[0, 3:6] = pp[0, 3:6] / 450
         pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
 
         return sp, pp, ep, cp, ip, tp, lm
@@ -97,9 +99,10 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str):
 
 def load_3dmm_data(
         bfm: FFTfMorphableModel,
+        image_size: int,
         data_name: str,
         image_file: str,
         mat_file: str):
-    image = load_image_3dmm(image_file=image_file)
+    image = load_image_3dmm(image_file=image_file, image_size=image_size + 32 if data_name == '300W_LP' else image_size)
     mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file)
     return image, mat_dict

@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python import keras
 
+from models.networks_face_encoder import FaceEncoder
 from models.networks_resnet50 import Resnet
 from morphable_model.model.morphable_model import FFTfMorphableModel
 from training.config_util import EasyDict
@@ -19,7 +20,7 @@ class FaceNetLinear3DMM:
         :param config_general:
              dim_illum: 10
              dim_color: 7
-             dim_tex: 199
+             dim_tex: 40
              dim_shape: 199
              dim_exp: 29
              dim_pose: 7
@@ -55,16 +56,14 @@ class FaceNetLinear3DMM:
         self.config_train_warmup = config_train_warmup
         self.config_train = config_train
 
-        self.image_size = 224
-
-        self.output_size_structure = list(np.cumsum([
-            self.config_general.dim_illum,
-            self.config_general.dim_color,
-            self.config_general.dim_tex,
-            self.config_general.dim_shape,
-            self.config_general.dim_exp,
-            self.config_general.dim_pose
-        ]))
+        # self.output_size_structure = list(np.cumsum([
+        #     self.config_general.dim_illum,
+        #     self.config_general.dim_color,
+        #     self.config_general.dim_tex,
+        #     self.config_general.dim_shape,
+        #     self.config_general.dim_exp,
+        #     self.config_general.dim_pose
+        # ]))
 
         self.save_dir = self.config_general.save_dir
         self.model_dir_warm_up = os.path.join(self.save_dir, 'warm_up', 'model')
@@ -91,10 +90,18 @@ class FaceNetLinear3DMM:
         self.build()
 
     def build(self):
-        self.resnet50 = Resnet(image_size=self.image_size)
-        self.resnet50.build()
-        self.dense = keras.layers.Dense(units=self.output_size_structure[-1], name='3dmm_dense')
-        self.model = keras.Sequential([self.resnet50.model, self.dense], name='Face3dmm')
+        self.face_encoder = FaceEncoder(
+            image_size=self.config_general.input_image_size,
+            gf_dim=self.config_general.dim_gf,
+            gfc_dim=self.config_general.dim_gfc,
+            sh_dim=self.config_general.dim_shape,
+            ep_dim=self.config_general.dim_exp,
+            tx_dim=self.config_general.dim_tex,
+            co_dim=self.config_general.dim_color,
+            m_dim=self.config_general.dim_pose,
+            il_dim=self.config_general.dim_illum
+        )
+        self.face_encoder.build()
         self.bfm = FFTfMorphableModel(
             param_mean_var_path=self.config_train_warmup.data_mean_std,
             model_path=self.config_general.bfm_dir,
@@ -102,28 +109,21 @@ class FaceNetLinear3DMM:
         )
 
     def __call__(self, inputs, training=False):
-        output = self.model(inputs, training=training)
-        x_illum = tf.expand_dims(output[:, 0: self.output_size_structure[0]], axis=1)
-        x_color = tf.expand_dims(output[:, self.output_size_structure[0]: self.output_size_structure[1]], axis=1)
-        x_tex = tf.expand_dims(output[:, self.output_size_structure[1]: self.output_size_structure[2]], axis=2)
-        x_shape = tf.expand_dims(output[:, self.output_size_structure[2]: self.output_size_structure[3]], axis=2)
-        x_exp = tf.expand_dims(output[:, self.output_size_structure[3]: self.output_size_structure[4]], axis=2)
-        x_pose = tf.expand_dims(output[:, self.output_size_structure[4]: self.output_size_structure[5]], axis=1)
-
+        k52_shape, k52_tex, k52_exp, k6_m, k6_ill, k6_col = self.face_encoder(inputs, training=training)
         return {
-            'illum': x_illum,
-            'color': x_color,
-            'tex': x_tex,
-            'shape': x_shape,
-            'exp': x_exp,
-            'pose': x_pose
+            'illum': k6_ill,
+            'color': k6_col,
+            'tex': k52_tex,
+            'shape': k52_shape,
+            'exp': k52_exp,
+            'pose': k6_m
         }
 
     def summary(self):
-        print(self.model.summary())
+        print(self.face_encoder.summary())
 
     def setup_3dmm_model(self):
-        ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.model)
+        ckpt = tf.train.Checkpoint(step=tf.Variable(0), net=self.face_encoder.model)
         checkpoint_dir = self.model_dir_warm_up
         manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=self.config_train_warmup.max_checkpoint_to_keep)
         ckpt.restore(manager.latest_checkpoint)
@@ -131,10 +131,7 @@ class FaceNetLinear3DMM:
         if manager.latest_checkpoint:
             print('restored from {}'.format(manager.latest_checkpoint))
         else:
-            print('load face vgg2 pretrained weights for resnet50')
-            self.resnet50.load_pretrained(self.config_train_warmup.face_vgg_v2_path)
-        self.resnet50.freeze()
-
+            print('restored failed')
         return ckpt, manager
 
     def _train_3dmm_warmup(self):
@@ -155,13 +152,12 @@ class FaceNetLinear3DMM:
 
     def train(self):
         self._train_3dmm_warmup()
-        self._train_3dmm()
+        # self._train_3dmm()
 
     def _train_3dmm(self):
-        self.resnet50.unfreeze()
         # we load face_vgg2 for computing loss for unsupervised learning
         # face_vgg2 will not be trainable
-        self.face_vgg2 = Resnet(image_size=self.image_size)
+        self.face_vgg2 = Resnet(image_size=self.config_train.input_image_size)
         self.face_vgg2.build()
         self.face_vgg2.freeze()
 

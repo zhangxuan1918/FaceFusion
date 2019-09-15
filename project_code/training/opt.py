@@ -25,7 +25,7 @@ def random_translate(images, ground_truth, batch_size, target_size, bfm: FFTfMor
         dtype=tf.dtypes.int32
     )
 
-    delta_m = tf.zeros([batch_size, 8])
+    delta_m = tf.zeros([batch_size, 7])
     delta_m[:, 6] = tf.math.divide(ty, bfm.stats_pose_mu[6])
     delta_m[:, 7] = tf.math.divide(tx, bfm.stats_pose_mu[7])
 

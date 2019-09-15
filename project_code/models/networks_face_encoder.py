@@ -80,7 +80,7 @@ class FaceEncoder:
         k51_m = self.g_bn5_m(Conv2D(int(self.gfc_dim / 8), (3, 3), (1, 1), padding='SAME', use_bias=False, name='g_k5_m_conv')(k4_1), training=is_training)
         k51_shape_ = k51_m.shape
         k52_m = AveragePooling2D(pool_size=[k51_shape_[1], k51_shape_[2]], strides=[1, 1], padding='VALID')(k51_m)
-        k52_m = tf.reshape(k52_m, [-1, int(self.gfc_dim / 5)])
+        k52_m = tf.reshape(k52_m, [-1, int(self.gfc_dim / 8)])
         k6_m = Dense(self.m_dim, name='g_k6_m_lin')(k52_m)
 
         # Illumination
