@@ -40,15 +40,11 @@ def get_3dmm_warmup_data(
     test_image_paths, test_mat_paths = _get_3dmm_warmup_data_paths(folder=data_test_dir, image_suffix='*.jpg')
     print('3dmm warmup testing data: {0}'.format(len(test_image_paths)))
 
-    train_txs = np.random.random_integers(0, 32, size=len(train_image_paths))
-    train_tys = np.random.random_integers(0, 32, size=len(train_image_paths))
-    g_train_data = partial(load_3dmm_data, bfm, im_size_pre_shift, im_size, '300W_LP', train_txs, train_tys)
+    g_train_data = partial(load_3dmm_data, bfm, im_size_pre_shift, im_size, '300W_LP')
 
     train_ds = tf.data.Dataset.from_tensor_slices((train_image_paths, train_mat_paths)).map(g_train_data)
 
-    test_txs = np.random.random_integers(0, 32, size=len(test_image_paths))
-    test_tys = np.random.random_integers(0, 32, size=len(test_image_paths))
-    g_test_data = partial(load_3dmm_data, bfm, im_size_pre_shift, im_size, 'AFLW_2000', test_txs, test_tys)
+    g_test_data = partial(load_3dmm_data, bfm, im_size_pre_shift, im_size, 'AFLW_2000')
     test_ds = tf.data.Dataset.from_tensor_slices((test_image_paths, test_mat_paths)).map(g_test_data)
 
     return train_ds, test_ds

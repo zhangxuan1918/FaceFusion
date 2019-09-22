@@ -33,7 +33,7 @@ def load_image_3dmm(im_size_pre_shift: int, im_size: int, tx: int, ty: int, im_f
     return image
 
 
-def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str, im_size_pre_shift: int, im_size: int, tx: int, ty: int):
+def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str, im_size_pre_shift: int, tx: int, ty: int):
     """
     load labels for image
     we rescale image from size (450, 450) to (224, 224)
@@ -65,7 +65,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str, im_siz
     :return:
     """
 
-    def _read_mat(mat_file):
+    def _read_mat(mat_file, tx, ty):
         mat_data = sio.loadmat(mat_file.numpy())
 
         sp = mat_data['Shape_Para']
@@ -101,7 +101,7 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str, im_siz
         lm[0], lm[1] = lm[0] - ty, lm[1] - tx
         return sp, pp, ep, cp, ip, tp, lm
 
-    sp, pp, ep, cp, ip, tp, lm = tf.py_function(_read_mat, [mat_file], [tf.float32] * 7)
+    sp, pp, ep, cp, ip, tp, lm = tf.py_function(_read_mat, [mat_file, 1.0 * tx, 1.0 * ty], [tf.float32] * 7)
     return {
                 'shape': sp,
                 'pose': pp,
@@ -118,10 +118,10 @@ def load_3dmm_data(
         im_size_pre_shift: int,
         im_size: int,
         data_name: str,
-        tx: int, # x translation
-        ty: int, # y translation
         image_file: str,
         mat_file: str):
+    tx = np.random.randint(0, 33, dtype=np.int32)
+    ty = np.random.randint(0, 33, dtype=np.int32)
     image = load_image_3dmm(im_file=image_file, im_size_pre_shift=im_size_pre_shift, im_size=im_size, tx=tx, ty=ty)
-    mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file, im_size_pre_shift=im_size_pre_shift, im_size=im_size, tx=tx, ty=ty)
+    mat_dict = load_mat_3dmm(bfm=bfm, data_name=data_name, mat_file=mat_file, im_size_pre_shift=im_size_pre_shift, tx=tx, ty=ty)
     return image, mat_dict

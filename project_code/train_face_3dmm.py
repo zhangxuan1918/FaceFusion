@@ -15,7 +15,7 @@ def config_general_settings(input_image_size) -> EasyDict:
     config['dim_gf'] = 32
     config['dim_gfc'] = 512
 
-    config['save_dir'] = '/opt/project/project_code/data/face_3dmm_models/20190915/'
+    config['save_dir'] = '/opt/project/project_code/data/face_3dmm_models/20190922/'
     config['bfm_dir'] = '/opt/data/BFM/BFM.mat'
     config['input_image_size'] = input_image_size
     return config

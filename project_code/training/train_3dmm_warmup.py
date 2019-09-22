@@ -5,7 +5,7 @@ from training.config_util import EasyDict
 from training.data import setup_3dmm_warmup_data
 from training.log import setup_summary
 from training.loss import loss_3dmm_warmup
-from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval, random_translate
+from training.opt import compute_landmarks, save_rendered_images_for_warmup_eval
 
 
 def train_3dmm_warmup(
@@ -92,8 +92,8 @@ def train_3dmm_warmup(
                         tf.summary.scalar(param, metric.result(), step=optimizer.iterations)
                         metric.reset_states()
 
-            # if batch_id % config.eval_freq == 0:
-            if batch_id > 0 and batch_id % config.eval_freq == 0:
+            if batch_id % config.eval_freq == 0:
+            # if batch_id > 0 and batch_id % config.eval_freq == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
@@ -201,11 +201,20 @@ def test_3dmm_warmup_one_step(
         G_loss += one_loss
 
         if i == 0:
+            # save_rendered_images_for_warmup_eval(
+            #     bfm=bfm,
+            #     images=images,
+            #     gt=ground_truth,
+            #     est=est,
+            #     image_size=render_image_size,
+            #     eval_dir=eval_dir,
+            #     batch_id=step_id
+            # )
             save_rendered_images_for_warmup_eval(
                 bfm=bfm,
                 images=images,
                 gt=ground_truth,
-                est=est,
+                est=ground_truth,
                 image_size=render_image_size,
                 eval_dir=eval_dir,
                 batch_id=step_id
