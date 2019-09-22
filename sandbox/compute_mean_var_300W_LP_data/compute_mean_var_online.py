@@ -17,8 +17,8 @@ color_para_mean = np.zeros((1, 7))
 color_para_var = np.zeros((1, 7))
 illum_para_mean = np.zeros((1, 10))
 illum_para_var = np.zeros((1, 10))
-tex_para_mean = np.zeros((199, 1))
-tex_para_var = np.zeros((199, 1))
+tex_para_mean = np.zeros((40, 1))
+tex_para_var = np.zeros((40, 1))
 
 counter = 0
 
@@ -31,8 +31,7 @@ def compute_mean_var(x, x_mean, x_var, n):
 
 
 keys = ['roi', 'Shape_Para', 'Pose_Para', 'Exp_Para', 'Color_Para', 'Illum_Para', 'pt2d', 'Tex_Para']
-pose_abs_max = np.array([-10000000] * 7, dtype=np.float)
-pose_abs_max = np.reshape(pose_abs_max, (1, 7))
+all_pose = []
 
 for mat_file in mat_paths:
     mat_contents = sio.loadmat(str(mat_file))
@@ -40,14 +39,16 @@ for mat_file in mat_paths:
 
     # roi_mean, roi_var = compute_mean_var(mat_contents['roi'], roi_mean, roi_var, counter)
     shape_para_mean, shape_para_var = compute_mean_var(mat_contents['Shape_Para'], shape_para_mean, shape_para_var, counter)
-    pose_para_mean, pose_para_var = compute_mean_var(mat_contents['Pose_Para'], pose_para_mean, pose_para_var, counter)
+    pose_para = np.copy(mat_contents['Pose_Para'])
+    pose_para[0, 3:5] = pose_para[0, 3:5] * 224. / 450.
+    pose_para[0, 6] = pose_para[0, 6] * 224. / 450.
+    pose_para_mean, pose_para_var = compute_mean_var(pose_para, pose_para_mean, pose_para_var, counter)
     exp_para_mean, exp_para_var = compute_mean_var(mat_contents['Exp_Para'], exp_para_mean, exp_para_var, counter)
     color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'], color_para_mean, color_para_var, counter)
     illum_para_mean, illum_para_var = compute_mean_var(mat_contents['Illum_Para'], illum_para_mean, illum_para_var, counter)
-    tex_para_mean, tex_para_var = compute_mean_var(mat_contents['Tex_Para'], tex_para_mean, tex_para_var, counter)
+    tex_para_mean, tex_para_var = compute_mean_var(mat_contents['Tex_Para'][:40, :], tex_para_mean, tex_para_var, counter)
 
-    pose_abs_max = np.maximum(pose_abs_max, np.abs(mat_contents['Pose_Para']))
-
+    all_pose.append(pose_para)
     if counter % 1000 == 0:
         print('counter= %d' % counter)
         # print(pose_para_mean)
@@ -58,7 +59,7 @@ for mat_file in mat_paths:
 
 # replace 0 var to be 1
 shape_para_var[shape_para_var < 0.000001] = 1.
-pose_para_var[pose_para_var < 0.000001] = 1.
+# pose_para_var[pose_para_var < 0.000001] = 1.
 exp_para_var[exp_para_var < 0.000001] = 1.
 color_para_var[color_para_var < 0.000001] = 1.
 illum_para_var[illum_para_var < 0.000001] = 1.

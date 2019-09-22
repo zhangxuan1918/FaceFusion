@@ -19,11 +19,14 @@ def loss_norm(est, gt, loss_type):
         raise Exception('unsupported loss_type={0}'.format(loss_type))
 
 
-def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict):
+def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict, is_use_loss_landmark: bool):
 
     G_loss = 0
     loss_info = ''
     for param in gt:
+
+        if not is_use_loss_landmark and param == 'landmark':
+            continue
 
         param_loss = loss_norm(
             est=est[param],
@@ -31,7 +34,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
             loss_type=loss_types[param]
         )
 
-        metric[param].update_state(param_loss)
+        if param in metric:
+            metric[param].update_state(param_loss)
 
         if param == 'landmark':
             # we didn't rescale landmarks, thus we have to resale the loss

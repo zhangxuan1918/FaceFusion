@@ -22,6 +22,8 @@ def train_3dmm_warmup(
     )
     train_ds, test_ds = setup_3dmm_warmup_data(
         bfm=bfm,
+        image_size_pre_shift=config.input_image_size_pre_shift,
+        image_size=config.input_image_size,
         batch_size=config.batch_size,
         data_train_dir=config.data_train_dir,
         data_test_dir=config.data_test_dir
@@ -43,9 +45,9 @@ def train_3dmm_warmup(
     }
 
     loss_weights = {
-        'shape': 20,
-        'pose': 40,
-        'exp': 20,
+        'shape': 10,
+        'pose': 10 / 224.,
+        'exp': 10,
         'color': 5,
         'illum': 5,
         'tex': 5,
@@ -53,9 +55,6 @@ def train_3dmm_warmup(
     }
 
     for epoch in range(config.num_of_epochs):
-        if epoch == 1:
-            face_model.resnet50.unfreeze()
-            face_model.summary()
         for batch_id, value in enumerate(train_ds):
             if batch_id % 100 == 0:
                 print('warm up training: batch={0}'.format(batch_id))
@@ -85,6 +84,7 @@ def train_3dmm_warmup(
                     loss_weights=loss_weights,
                     epoch=epoch,
                     step_id=batch_id,
+                    is_use_loss_landmark=True
                 )
 
                 if tf.equal(optimizer.iterations % config.log_freq, 0):
@@ -105,7 +105,8 @@ def train_3dmm_warmup(
                         loss_weights=loss_weights,
                         render_image_size=224,
                         step_id=int(ckpt.step),
-                        eval_dir=eval_dir
+                        eval_dir=eval_dir,
+                        is_use_loss_landmark=True
                     )
 
                     save_path = manager.save()
@@ -122,29 +123,39 @@ def train_3dmm_warmup_one_step(
         loss_types: dict,
         loss_weights: dict,
         epoch: int,
-        step_id: int
+        step_id: int,
+        is_use_loss_landmark: bool
 ):
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
+        # recover 3dmm model param shape
+        est['shape'] = tf.expand_dims(est['shape'], 2)
+        est['pose'] = tf.expand_dims(est['pose'], 1)
+        est['exp'] = tf.expand_dims(est['exp'], 2)
+        est['color'] = tf.expand_dims(est['color'], 1)
+        est['illum'] = tf.expand_dims(est['illum'], 1)
+        est['tex'] = tf.expand_dims(est['tex'], 2)
 
-        est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
-            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
-            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
-            bfm=bfm
-        )
+        if is_use_loss_landmark:
+            est['landmark'] = compute_landmarks(
+                poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+                shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+                exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+                bfm=bfm
+            )
 
         G_loss, loss_info = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
+            is_use_loss_landmark=is_use_loss_landmark
         )
 
         print('epoch: {epoch}/{step_id}, {loss}'.format(epoch=epoch, step_id=step_id, loss=loss_info))
 
-        trainable_vars = face_model.model.trainable_variables
+        trainable_vars = face_model.face_encoder.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
         optimizer.apply_gradients(zip(train_gradient, trainable_vars))
 
@@ -158,7 +169,8 @@ def test_3dmm_warmup_one_step(
         loss_weights: dict,
         render_image_size,
         eval_dir: str,
-        step_id: int
+        step_id: int,
+        is_use_loss_landmark: bool
 ):
     G_loss = 0
     for i, value in enumerate(test_ds):
@@ -175,24 +187,44 @@ def test_3dmm_warmup_one_step(
         images, ground_truth = value
 
         est = face_model(images, training=False)
-        est['landmark'] = compute_landmarks(
-            poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
-            shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
-            exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
-            bfm=bfm
-        )
+
+        # recover 3dmm model param shape
+        est['shape'] = tf.expand_dims(est['shape'], 2)
+        est['pose'] = tf.expand_dims(est['pose'], 1)
+        est['exp'] = tf.expand_dims(est['exp'], 2)
+        est['color'] = tf.expand_dims(est['color'], 1)
+        est['illum'] = tf.expand_dims(est['illum'], 1)
+        est['tex'] = tf.expand_dims(est['tex'], 2)
+
+        if is_use_loss_landmark:
+            est['landmark'] = compute_landmarks(
+                poses_param=est.get('pose') * bfm.stats_pose_std + bfm.stats_pose_mu,
+                shapes_param=est.get('shape') * bfm.stats_shape_std + bfm.stats_shape_mu,
+                exps_param=est.get('exp') * bfm.stats_exp_std + bfm.stats_exp_mu,
+                bfm=bfm
+            )
 
         one_loss, _ = loss_3dmm_warmup(
             gt=ground_truth,
             est=est,
             metric=metric,
             loss_types=loss_types,
-            loss_weights=loss_weights
+            loss_weights=loss_weights,
+            is_use_loss_landmark=is_use_loss_landmark
         )
 
         G_loss += one_loss
 
         if i == 0:
+            # save_rendered_images_for_warmup_eval(
+            #     bfm=bfm,
+            #     images=images,
+            #     gt=ground_truth,
+            #     est=est,
+            #     image_size=render_image_size,
+            #     eval_dir=eval_dir,
+            #     batch_id=step_id
+            # )
             save_rendered_images_for_warmup_eval(
                 bfm=bfm,
                 images=images,
@@ -200,6 +232,8 @@ def test_3dmm_warmup_one_step(
                 est=est,
                 image_size=render_image_size,
                 eval_dir=eval_dir,
-                batch_id=step_id
+                batch_id=step_id,
+                num_images_to_render=20,
+                max_images_in_dir=200,
             )
     print('step={0}, test loss: {1}'.format(step_id, G_loss))

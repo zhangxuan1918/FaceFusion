@@ -6,13 +6,17 @@ from morphable_model.model.morphable_model import FFTfMorphableModel
 
 def setup_3dmm_warmup_data(
     bfm: FFTfMorphableModel,
-    batch_size,
-    data_train_dir,
-    data_test_dir
+    image_size_pre_shift: int,
+    image_size: int,
+    batch_size: int,
+    data_train_dir: str,
+    data_test_dir: str
 ):
     # load training dataset
     train_ds, test_ds = get_3dmm_warmup_data(
         bfm=bfm,
+        im_size_pre_shift=image_size_pre_shift,
+        im_size=image_size,
         data_train_dir=data_train_dir,
         data_test_dir=data_test_dir
     )
@@ -28,12 +32,14 @@ def setup_3dmm_warmup_data(
 
 
 def setup_3dmm_data(
-    batch_size,
-    data_train_dir,
-    data_test_dir
+    image_size: int,
+    batch_size: int,
+    data_train_dir: str,
+    data_test_dir: str
 ):
     # load training dataset
     train_ds, test_ds = get_3dmm_data(
+        im_size=image_size,
         data_train_dir=data_train_dir,
         data_test_dir=data_test_dir
     )

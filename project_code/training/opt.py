@@ -10,41 +10,6 @@ from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-# def split_3dmm_labels(values):
-#     """
-#     split labels into different 3dmm params
-#     :param values:
-#     :return:
-#     """
-#     # get different labels
-#     # Shape_Para: [batch, 199, 1)
-#     # Pose_Para: [batch, 1, 7]
-#     # Exp_Para: [batch, 29, 1]
-#     # Color_Para: [batch, 7, 1]
-#     # Illum_Para: [batch, 1, 10]
-#     # pt2d: (batch, 2, 68]
-#     # Tex_Para: [batch, 199, 1]
-#
-#     shape_gt = tf.expand_dims(values[:, 0:199], axis=2)
-#     pose_gt = tf.expand_dims(values[:, 199: 206], axis=1)
-#     exp_gt = tf.expand_dims(values[:, 206: 235], axis=2)
-#     color_gt = tf.expand_dims(values[:, 235: 242], axis=1)
-#     illum_gt = tf.expand_dims(values[:, 242: 252], axis=1)
-#     # reshape landmark
-#     landmark_gt = tf.reshape(values[:, 252: 388], (-1, 2, 68))
-#     tex_gt = tf.expand_dims(values[:, 388:], axis=2)
-#
-#     return {
-#         'shape': shape_gt,
-#         'pose': pose_gt,
-#         'exp': exp_gt,
-#         'color': color_gt,
-#         'illum': illum_gt,
-#         'tex': landmark_gt,
-#         'landmark': tex_gt,
-#     }
-
-
 def compute_landmarks(
         poses_param,
         shapes_param,
@@ -135,7 +100,7 @@ def save_rendered_images_for_warmup_eval(
 ):
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
     # recover original input
-    images += face_vgg2_input_mean
+    images = (images + 1) * 127.5
 
     # recover params
     est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
@@ -160,7 +125,6 @@ def save_rendered_images_for_warmup_eval(
 
     for i in range(num_images_to_render):
         image_gt = images[i].numpy().astype(np.uint8)
-
         image_est = images_est[i].numpy().astype(np.uint8)
 
         filename = os.path.join(eval_dir, 'batch_id_{batch_id}_rendered_{i}.jpg'.format(batch_id=batch_id, i=i))
@@ -226,7 +190,7 @@ def save_images(images, filename, titles, landmarks=None):
         ax = fig.add_subplot(1, n, i + 1)
         ax.set_ylim(bottom=224, top=0)
         ax.set_xlim(left=0, right=224)
-        ax.imshow(im)
+        ax.imshow(im, origin='upper')
         if lm is not None:
             ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
                     color='w', lw=2)

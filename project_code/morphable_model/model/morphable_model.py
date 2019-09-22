@@ -14,19 +14,8 @@ class FFTfMorphableModel(TfMorphableModel):
     def load_param_mean_var(self):
         params_mean_var = np.load(self.param_mean_var_path)
 
-        # rescale pose params
-        # param mean var computed for image size = 450
-        # we rescale the image size to 224
-        # only scaling and t3d need to be rescaled
-
-        pose_mean = np.copy(params_mean_var['Pose_Para_mean'])
-        pose_mean[0, 3:] = pose_mean[0, 3:] * 224. / 450.
-
-        pose_std = np.copy(params_mean_var['Pose_Para_std'])
-        pose_std[0, 3:] = pose_std[0, 3:] * 224. / 450.
-
-        self.stats_pose_mu = tf.constant(pose_mean, dtype=tf.float32)
-        self.stats_pose_std = tf.constant(pose_std, dtype=tf.float32)
+        self.stats_pose_mu = tf.constant(params_mean_var['Pose_Para_mean'], dtype=tf.float32)
+        self.stats_pose_std = tf.constant(params_mean_var['Pose_Para_std'], dtype=tf.float32)
 
         self.stats_exp_mu = tf.constant(params_mean_var['Exp_Para_mean'], dtype=tf.float32)
         self.stats_exp_std = tf.constant(params_mean_var['Exp_Para_std'], dtype=tf.float32)

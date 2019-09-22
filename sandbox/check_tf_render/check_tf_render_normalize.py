@@ -15,11 +15,13 @@ mat_data = sio.loadmat(mat_filename)
 
 sp = np.divide(np.subtract(mat_data['Shape_Para'], bfm.stats_shape_mu.numpy()), bfm.stats_shape_std.numpy())
 ep = np.divide(np.subtract(mat_data['Exp_Para'], bfm.stats_exp_mu.numpy()), bfm.stats_exp_std.numpy())
-tp = np.divide(np.subtract(mat_data['Tex_Para'], bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
+tp = np.divide(np.subtract(mat_data['Tex_Para'][:40, :], bfm.stats_tex_mu.numpy()), bfm.stats_tex_std.numpy())
 cp = np.divide(np.subtract(mat_data['Color_Para'], bfm.stats_color_mu.numpy()), bfm.stats_color_std.numpy())
 ip = np.divide(np.subtract(mat_data['Illum_Para'], bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
+
 pp = mat_data['Pose_Para']
-pp[0, 3:] = pp[0, 3:] * 224 / 450
+pp[0, 3:6] = pp[0, 3:6] * 224 / 450
+
 pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
 
 sp = tf.constant(sp, dtype=tf.float32)
