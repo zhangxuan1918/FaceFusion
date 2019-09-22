@@ -86,7 +86,7 @@ class FaceEncoder:
         # Illumination
         k51_ill = self.g_bn5_ill(Conv2D(int(self.gfc_dim / 8), (3, 3), (1, 1), padding='SAME', name='g_k5_il_conv')(k4_1), training=is_training)
         k52_ill = AveragePooling2D(pool_size=[k51_shape_[1], k51_shape_[2]], strides=[1, 1], padding='VALID')(k51_ill)
-        k52_ill = tf.reshape(k52_ill, [-1, int(self.gfc_dim / 5)])
+        k52_ill = tf.reshape(k52_ill, [-1, int(self.gfc_dim / 8)])
         k6_ill = Dense(self.il_dim, name='g_k6_ill_lin')(k52_ill)
 
         # Shape
@@ -108,7 +108,7 @@ class FaceEncoder:
         # Color
         k51_col = self.g_bn5_col(Conv2D(int(self.gfc_dim / 8), (3, 3), (1, 1), padding='SAME', name='g_k5_col_conv')(k4_1), training=is_training)
         k52_col = AveragePooling2D(pool_size=[k51_shape_[1], k51_shape_[2]], strides=[1, 1], padding='VALID')(k51_col)
-        k52_col = tf.reshape(k52_col, [-1, int(self.gfc_dim / 2)])
+        k52_col = tf.reshape(k52_col, [-1, int(self.gfc_dim / 8)])
         k6_col = Dense(self.co_dim, name='g_k6_col_lin')(k52_col)
 
         return k52_shape, k52_tex, k52_exp, k6_m, k6_ill, k6_col

@@ -91,8 +91,8 @@ def load_mat_3dmm(bfm: FFTfMorphableModel, data_name: str, mat_file: str, im_siz
         ip = np.divide(np.subtract(ip, bfm.stats_illum_mu.numpy()), bfm.stats_illum_std.numpy())
 
         # update pose param with random translation
-        pp[0, 3:5] = im_size_pre_shift / 450.
-        pp[0, 6] = im_size_pre_shift / 450.
+        pp[0, 3:5] *= im_size_pre_shift / 450.
+        pp[0, 6] *= im_size_pre_shift / 450.
         pp[0, 3], pp[0, 4] = pp[0, 3] - ty, pp[0, 4] - (32. - tx)
         pp = np.divide(np.subtract(pp, bfm.stats_pose_mu.numpy()), bfm.stats_pose_std.numpy())
 

@@ -46,7 +46,7 @@ def train_3dmm_warmup(
 
     loss_weights = {
         'shape': 10,
-        'pose': 10,
+        'pose': 10 / 224.,
         'exp': 10,
         'color': 5,
         'illum': 5,
@@ -128,6 +128,13 @@ def train_3dmm_warmup_one_step(
 ):
     with tf.GradientTape() as gradient_type:
         est = face_model(images, training=True)
+        # recover 3dmm model param shape
+        est['shape'] = tf.expand_dims(est['shape'], 2)
+        est['pose'] = tf.expand_dims(est['pose'], 1)
+        est['exp'] = tf.expand_dims(est['exp'], 2)
+        est['color'] = tf.expand_dims(est['color'], 1)
+        est['illum'] = tf.expand_dims(est['illum'], 1)
+        est['tex'] = tf.expand_dims(est['tex'], 2)
 
         if is_use_loss_landmark:
             est['landmark'] = compute_landmarks(
@@ -148,7 +155,7 @@ def train_3dmm_warmup_one_step(
 
         print('epoch: {epoch}/{step_id}, {loss}'.format(epoch=epoch, step_id=step_id, loss=loss_info))
 
-        trainable_vars = face_model.model.trainable_variables
+        trainable_vars = face_model.face_encoder.model.trainable_variables
         train_gradient = gradient_type.gradient(G_loss, trainable_vars)
         optimizer.apply_gradients(zip(train_gradient, trainable_vars))
 
@@ -180,6 +187,14 @@ def test_3dmm_warmup_one_step(
         images, ground_truth = value
 
         est = face_model(images, training=False)
+
+        # recover 3dmm model param shape
+        est['shape'] = tf.expand_dims(est['shape'], 2)
+        est['pose'] = tf.expand_dims(est['pose'], 1)
+        est['exp'] = tf.expand_dims(est['exp'], 2)
+        est['color'] = tf.expand_dims(est['color'], 1)
+        est['illum'] = tf.expand_dims(est['illum'], 1)
+        est['tex'] = tf.expand_dims(est['tex'], 2)
 
         if is_use_loss_landmark:
             est['landmark'] = compute_landmarks(
@@ -217,6 +232,8 @@ def test_3dmm_warmup_one_step(
                 est=ground_truth,
                 image_size=render_image_size,
                 eval_dir=eval_dir,
-                batch_id=step_id
+                batch_id=step_id,
+                num_images_to_render=20,
+                max_images_in_dir=200,
             )
     print('step={0}, test loss: {1}'.format(step_id, G_loss))

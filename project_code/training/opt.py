@@ -100,7 +100,7 @@ def save_rendered_images_for_warmup_eval(
 ):
     clean_up(data_folder=eval_dir, max_num_files=max_images_in_dir)
     # recover original input
-    images += face_vgg2_input_mean
+    images = (images + 1) * 127.5
 
     # recover params
     est['pose'] = est['pose'] * bfm.stats_pose_std + bfm.stats_pose_mu
@@ -125,7 +125,6 @@ def save_rendered_images_for_warmup_eval(
 
     for i in range(num_images_to_render):
         image_gt = images[i].numpy().astype(np.uint8)
-
         image_est = images_est[i].numpy().astype(np.uint8)
 
         filename = os.path.join(eval_dir, 'batch_id_{batch_id}_rendered_{i}.jpg'.format(batch_id=batch_id, i=i))
