@@ -25,6 +25,7 @@ def train_3dmm(
     metric_test = keras.metrics.Mean(name='loss_test', dtype=tf.float32)
 
     train_ds, test_ds = setup_3dmm_data(
+        image_size=config.input_image_size,
         data_train_dir=config.data_train_dir,
         data_test_dir=config.data_test_dir,
         batch_size=config.batch_size

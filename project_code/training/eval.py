@@ -7,7 +7,6 @@ import matplotlib
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from project_code.data_tools.data_util import recover_3dmm_params
 
 
 def update_tf_summary(var_name, metric, step):

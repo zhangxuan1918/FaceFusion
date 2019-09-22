@@ -22,6 +22,7 @@ def train_3dmm_warmup(
     )
     train_ds, test_ds = setup_3dmm_warmup_data(
         bfm=bfm,
+        image_size_pre_shift=config.input_image_size_pre_shift,
         image_size=config.input_image_size,
         batch_size=config.batch_size,
         data_train_dir=config.data_train_dir,
@@ -70,15 +71,6 @@ def train_3dmm_warmup(
             #     'landmark': lm_gt,
             # }
             images, ground_truth = value
-            # random translate images
-            # TODO: check if this works
-            images, ground_truth = random_translate(
-                images=images,
-                ground_truth=ground_truth,
-                target_size=config.input_image_size,
-                batch_size=config.batch_size,
-                bfm=bfm
-            )
             with train_summary_writer.as_default():
 
                 train_3dmm_warmup_one_step(

@@ -41,7 +41,8 @@ for mat_file in mat_paths:
     # roi_mean, roi_var = compute_mean_var(mat_contents['roi'], roi_mean, roi_var, counter)
     shape_para_mean, shape_para_var = compute_mean_var(mat_contents['Shape_Para'], shape_para_mean, shape_para_var, counter)
     pose_para = np.copy(mat_contents['Pose_Para'])
-    pose_para[0, 3:6] = pose_para[0, 3:6] / 450.
+    pose_para[0, 3:5] = pose_para[0, 3:5] * 224. / 450.
+    pose_para[0, 6] = pose_para[0, 6] * 224. / 450.
     pose_para_mean, pose_para_var = compute_mean_var(pose_para, pose_para_mean, pose_para_var, counter)
     exp_para_mean, exp_para_var = compute_mean_var(mat_contents['Exp_Para'], exp_para_mean, exp_para_var, counter)
     color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'], color_para_mean, color_para_var, counter)

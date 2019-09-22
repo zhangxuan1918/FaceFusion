@@ -10,30 +10,6 @@ from data_tools.data_const import face_vgg2_input_mean
 from morphable_model.model.morphable_model import FFTfMorphableModel
 
 
-def random_translate(images, ground_truth, batch_size, target_size, bfm: FFTfMorphableModel):
-    # random translate images
-    tx = tf.random.uniform(
-        shape=[batch_size],
-        minval=0,
-        maxval=32,
-        dtype=tf.dtypes.int32
-    )
-    ty = tf.random.uniform(
-        shape=[batch_size],
-        minval=0,
-        maxval=32,
-        dtype=tf.dtypes.int32
-    )
-
-    delta_m = tf.zeros([batch_size, 7])
-    delta_m[:, 6] = tf.math.divide(ty, bfm.stats_pose_mu[6])
-    delta_m[:, 7] = tf.math.divide(tx, bfm.stats_pose_mu[7])
-
-    ground_truth['pose'] = ground_truth['pose'] - delta_m
-    images = tf.image.crop_to_bounding_box(images, tx, ty, target_size, target_size)
-    return images, ground_truth
-
-
 def compute_landmarks(
         poses_param,
         shapes_param,
@@ -215,7 +191,7 @@ def save_images(images, filename, titles, landmarks=None):
         ax = fig.add_subplot(1, n, i + 1)
         ax.set_ylim(bottom=224, top=0)
         ax.set_xlim(left=0, right=224)
-        ax.imshow(im)
+        ax.imshow(im, origin='upper')
         if lm is not None:
             ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
                     color='w', lw=2)

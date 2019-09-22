@@ -21,7 +21,7 @@ def config_general_settings(input_image_size) -> EasyDict:
     return config
 
 
-def config_train_warmup_settings(input_image_size) -> EasyDict:
+def config_train_warmup_settings(input_image_size, input_image_size_pre_shift) -> EasyDict:
 
     config = EasyDict()
     config['loss_shape_type'] = 'l2'
@@ -36,6 +36,7 @@ def config_train_warmup_settings(input_image_size) -> EasyDict:
     config['log_freq'] = 100
     config['eval_freq'] = 1000
     config['input_image_size'] = input_image_size
+    config['input_image_size_pre_shift'] = input_image_size_pre_shift
 
     config['max_checkpoint_to_keep'] = 5
     config['data_train_dir'] = '/opt/data/300W_LP/'
@@ -73,7 +74,7 @@ def config_train_settings(input_image_size) -> EasyDict:
 
 def train_face_3dmm():
     config_general = config_general_settings(input_image_size=224)
-    config_train_warmup = config_train_warmup_settings(input_image_size=224)
+    config_train_warmup = config_train_warmup_settings(input_image_size=224, input_image_size_pre_shift=256)
     config_train = config_train_settings(input_image_size=224)
 
     model = FaceNetLinear3DMM(
