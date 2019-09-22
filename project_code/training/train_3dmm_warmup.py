@@ -92,8 +92,8 @@ def train_3dmm_warmup(
                         tf.summary.scalar(param, metric.result(), step=optimizer.iterations)
                         metric.reset_states()
 
-            if batch_id % config.eval_freq == 0:
-            # if batch_id > 0 and batch_id % config.eval_freq == 0:
+            # if batch_id % config.eval_freq == 0:
+            if batch_id > 0 and batch_id % config.eval_freq == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
@@ -229,7 +229,7 @@ def test_3dmm_warmup_one_step(
                 bfm=bfm,
                 images=images,
                 gt=ground_truth,
-                est=ground_truth,
+                est=est,
                 image_size=render_image_size,
                 eval_dir=eval_dir,
                 batch_id=step_id,
