@@ -9,7 +9,9 @@ from training.opt import save_images
 bfm = FFTfMorphableModel(param_mean_var_path='/opt/data/300W_LP_stats/stats_300W_LP.npz', model_path='/opt/data/BFM/BFM.mat')
 
 # --load mesh data
-pic_name = 'IBUG_image_008_1_0'
+pic_name = 'image00283'
+# pic_name = 'image00278'
+# pic_name = 'IBUG_image_008_1_0'
 # pic_name = 'IBUG_image_014_01_2'
 
 jpg_filename = '../../examples/Data/{0}.jpg'.format(pic_name)
@@ -20,14 +22,14 @@ mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
 mat_data = sio.loadmat(mat_filename)
 
 tx = 32
-ty = 0
+ty = 17
 render_image_size = 224
 
 image_resized = tf.image.resize(image, (256, 256))
 image_shift = tf.image.crop_to_bounding_box(image_resized, tx, ty, render_image_size, render_image_size)
 image_resized2 = tf.image.resize(image, (224, 224))
 
-lm = mat_data['pt2d']
+lm = mat_data['pt3d_68'][0:2, :]
 lm_shift = np.copy(lm)
 lm_shift *= 256. / 450.
 lm_shift[0], lm_shift[1] = lm_shift[0] - ty, lm_shift[1] - tx
@@ -65,7 +67,7 @@ image_rendered = render_2(
     tf_bfm=bfm
 )
 
-save_to_file = './test_landmark_shift.jpg'
+save_to_file = './test_landmark_shift2.jpg'
 
 
 save_images(
