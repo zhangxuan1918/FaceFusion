@@ -3,20 +3,27 @@ import tensorflow as tf
 from data_tools.data_const import face_vgg2_input_mean
 
 
-def loss_norm(est, gt, loss_type):
+def loss_norm(est, gt, loss_type, param):
     """
     compute l1 or l2 loss
     :param est: estimations
     :param gt: true labels
     :param loss_type: l1 or l2
+    :param param: name of the parameter
     :return:
     """
-    if loss_type == 'l2':
-        return tf.reduce_mean(tf.square(est - gt))
-    elif loss_type == 'l1':
-        return tf.reduce_mean(tf.abs(est - gt))
+    # treat pose param differently
+    if param == 'pose':
+        # add more weights to angle, translation
+        diff = tf.square(est - gt)
+        return 100 * tf.reduce_mean(diff[:, 0, 0:3]) + tf.reduce_mean(diff[:, 0, 3:])
     else:
-        raise Exception('unsupported loss_type={0}'.format(loss_type))
+        if loss_type == 'l2':
+            return tf.reduce_mean(tf.square(est - gt))
+        elif loss_type == 'l1':
+            return tf.reduce_mean(tf.abs(est - gt))
+        else:
+            raise Exception('unsupported loss_type={0}'.format(loss_type))
 
 
 def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_weights: dict, is_use_loss_landmark: bool):
@@ -31,7 +38,8 @@ def loss_3dmm_warmup(gt: dict, est: dict, metric: dict, loss_types: dict, loss_w
         param_loss = loss_norm(
             est=est[param],
             gt=gt[param],
-            loss_type=loss_types[param]
+            loss_type=loss_types[param],
+            param=param
         )
 
         if param in metric:
