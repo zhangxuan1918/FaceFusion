@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xuan1918/facefusion:v0.0.3
+    image: xuan1918/facefusion:v0.0.4
     ports:
       - "6006:6006"
     environment:
@@ -12,7 +12,6 @@ services:
     env_file:
       - face_fusion.env
     volumes:
-      - /home/xuan/Projects/data/face_fuse:/opt/data/
-      - /home/xuan/Projects/data/nonlinear_face_3dmm:/opt/data2/
+      - /home/xuan/Projects/data/:/opt/data/
 
 #docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"
