@@ -10,7 +10,7 @@ import numpy as np
 import scipy
 import tensorflow as tf
 
-from create_tfrecord.export_tfrecord_util import fn_extract_labels
+from create_tfrecord.export_tfrecord_util import fn_extract_300W_LP_labels
 
 
 class TFRecordExporter:
@@ -154,7 +154,7 @@ def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, 
     print('find %d images' % len(image_filenames))
 
     return create_tfrecord(tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
-                           process_label_fn=fn_extract_labels(bfm_path=bfm_path, image_size=resolution, is_aflw_2000=True), print_progress=print_progress,
+                           process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=resolution, is_aflw_2000=True), print_progress=print_progress,
                            progress_interval=progress_interval, resolution=resolution)
 
 

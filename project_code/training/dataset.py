@@ -1,45 +1,27 @@
 import glob
 import os
 
+import numpy as np
 import tensorflow as tf
+from official.utils.misc import distribution_utils
+
 # Parse individual image from tfrecord file
 
-def parse_tfrecord_tf(record, dtypes):
+
+def parse_tfrecord_tf(record):
     features = tf.io.parse_single_example(record, features={
-        'image': tf.io.FixedLenFeature([], tf.string),
-        'shape_para': tf.io.FixedLenFeature([], tf.string),
-        'pose_para': tf.io.FixedLenFeature([], tf.string),
-        'exp_para': tf.io.FixedLenFeature([], tf.string),
-        'color_para': tf.io.FixedLenFeature([], tf.string),
-        'illum_para': tf.io.FixedLenFeature([], tf.string),
-        'tex_para': tf.io.FixedLenFeature([], tf.string),
-        'pt2d': tf.io.FixedLenFeature([], tf.string),
-    })
-    image = tf.io.parse_tensor(features['image'], out_type=dtypes['image'])
-    shape_para = tf.io.parse_tensor(features['shape_para'], out_type=dtypes['shape_para'])
-    pose_para = tf.io.parse_tensor(features['pose_para'], out_type=dtypes['pose_para'])
-    exp_para = tf.io.parse_tensor(features['exp_para'], out_type=dtypes['exp_para'])
-    color_para = tf.io.parse_tensor(features['color_para'], out_type=dtypes['color_para'])
-    illum_para = tf.io.parse_tensor(features['illum_para'], out_type=dtypes['illum_para'])
-    tex_para = tf.io.parse_tensor(features['tex_para'], out_type=dtypes['tex_para'])
-    pt2d = tf.io.parse_tensor(features['pt2d'], out_type=dtypes['pt2d'])
-
-    return image, {
-        'shape_para': shape_para,
-        'pose_para': pose_para,
-        'exp_para': exp_para,
-        'color_para': color_para,
-        'illum_para': illum_para,
-        'tex_para': tex_para,
-        'pt2d': pt2d
-    }
+        'shape': tf.io.FixedLenFeature([3], tf.int64),
+        'image': tf.io.FixedLenFeature([], tf.string)})
+    data = tf.io.decode_raw(features['image'], tf.uint8)
+    return tf.reshape(data, features['shape'])
 
 
-def parse_tfrecord_np(record, dtypes):
-    image, labels = parse_tfrecord_tf(record, dtypes)
-    labels_np = {key: value.numpy() for key, value in labels.items()}
-
-    return image.numpy(), labels_np
+def parse_tfrecord_np(record):
+    ex = tf.train.Example()
+    ex.ParseFromString(record)
+    shape = ex.features.feature['shape'].int64_list.value  # temporary pylint workaround # pylint: disable=no-member
+    data = ex.features.feature['image'].bytes_list.value[0]  # temporary pylint workaround # pylint: disable=no-member
+    return np.fromstring(data, np.uint8).reshape(shape)
 
 
 # Dataset class that loads data from tfrecords files
@@ -50,44 +32,75 @@ class TFRecordDataset:
                  label_file=None,  # Relative path of the labels file, None = autodetect.
                  max_label_size=0,  # 0 = no labels, 'full' = full labels, <int> = N first label components.
                  repeat=True,  # Repeat dataset indefinitely.
+                 batch_size=64,  # batch size
                  shuffle_mb=4096,  # Shuffle data within specified window (megabytes), 0 = disable shuffling.
                  prefetch_mb=2048,  # Amount of data to prefetch (megabytes), 0 = disable prefetching.
                  buffer_mb=256,  # Read buffer size (megabytes).
-                 num_threads=2):  # Number of concurrent threads.
+                 num_threads=2,  # Number of concurrent threads.
+                 num_gpus=0,  # Number of gpus
+                 distribution_strategy='mirrored'):  # Data distribution for multi gpu
         self.tfrecord_dir = tfrecord_dir
-        self.resolution = None
-        self.resolution_log2 = None
+        self.resolution = resolution
+        self.label_file = label_file
+        self.label_size = None
+        self.label_dtype = None
         self.shape = []  # [height, width, channel]
-        self.dtypes = {
-            'image': tf.uint8,
-            'pose_para': tf.float32,
-            'exp_para': tf.float32,
-            'color_para': tf.float32,
-            'illum_para': tf.float32,
-            'tex_para': tf.float32,
-            'pt2d': tf.float32
-        }
-
+        self.dtype = 'uint8'
         self.dynamic_range = [0, 255]
-
+        self._np_labels = None
         self._tf_datasets = None
         self._tf_iterator = None
-        self._tf_minibatch_np = None
-        self._cur_minibatch = -1
+        self._tf_minibatch_in = batch_size
+
+        self.strategy = distribution_utils.get_distribution_strategy(
+            distribution_strategy=distribution_strategy,
+            num_gpus=num_gpus
+        )
 
         assert os.path.isdir(self.tfrecord_dir)
         tfr_files = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.tfrecords')))
         assert len(tfr_files) == 1
         tfr_file = tfr_files[0]
         tfr_opt = tf.io.TFRecordOptions('')
-        tfr_shapes = {}
-        for record in tf.compat.v1.io.tf_record_iterator(tfr_file, tfr_opt)
-            ex, ex_labels = parse_tfrecord_np(record, self.dtypes)
-            tfr_shapes['image'] = ex.shape
-            for key, value in ex_labels:
-                tfr_shapes[key] = value.shape
+        tfr_shape = []
+        for record in tf.compat.v1.io.tf_record_iterator(tfr_file, tfr_opt):
+            tfr_shape.append(parse_tfrecord_np(record).shape)
+            break
+
+        # load label files
+        if self.label_file is None:
+            guess = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.labels.npy')))
+            if len(guess):
+                self.label_file = guess[0]
+        elif not os.path.isfile(self.label_file):
+            guess = os.path.join(self.tfrecord_dir, self.label_file)
+            if os.path.isfile(guess):
+                self.label_file = guess
+        else:
+            raise Exception('No label file found')
+        self._np_labels = np.load(self.label_file)
+
+        if max_label_size != 'full' and self._np_labels.shape[0] > max_label_size:
+            self._np_labels = self._np_labels[:max_label_size, :]
+        self.label_size = self._np_labels.shape[0]
+        self.label_dtype = self._np_labels.dtype.name
 
         with tf.name_scope('Dataset'), tf.device('/cpu:0'):
-            dset = tf.data.TFRecordDataset(tfr_file, compression_type='', buffer_size=buffer_mb<<20)
+            self._tf_labels_dataset = tf.data.Dataset.from_tensor_slices(self._np_labels)
+            dset = tf.data.TFRecordDataset(tfr_file, compression_type='', buffer_size=buffer_mb << 20)
             dset = dset.map(parse_tfrecord_tf, num_parallel_calls=num_threads)
-            bytes_per_item =
+            dset = tf.data.Dataset.zip((dset, self._tf_labels_dataset))
+            bytes_per_item = np.prod(tfr_shape) * np.dtype(self.dtype).itemsize
+            if shuffle_mb > 0:
+                dset = dset.shuffle(((shuffle_mb << 20) - 1) // bytes_per_item + 1)
+            if repeat:
+                dset = dset.repeat()
+            if prefetch_mb > 0:
+                dset = dset.prefetch(((prefetch_mb << 20) - 1) // bytes_per_item + 1)
+            self._tf_datasets = dset.batch(self._tf_minibatch_in)
+
+            self._tf_iterator = iter(self.strategy.experimental_distribute_datasets_from_function(self._tf_datasets))
+
+    # Get next mini batch as TensorFlow expressions
+    def get_minibatch_tf(self):
+        return next(self._tf_iterator)

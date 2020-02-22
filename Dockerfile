@@ -3,6 +3,8 @@ FROM xuan1918/tensorflow/3dmm-rendering:v0.1.1-py3
 ARG SSH_PRV_KEY
 ARG SSH_PUB_KEY
 
+RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.7-dev
+
 # Add the keys and set permissions
 RUN mkdir -p /root/.ssh && \
     chmod 0700 /root/.ssh && \
@@ -19,7 +21,16 @@ RUN cd ~ && git clone git@github.com:zhangxuan1918/tensorflow3DMMRendering.git &
 
 RUN rm -rf /root/.ssh/
 
+RUN pip install --upgrade pip
+
 # install other requirement
 ADD requirements.txt .
 RUN python -m pip install -r requirements.txt
 RUN rm requirements.txt
+
+# install tensorflow models
+RUN git clone https://github.com/zhangxuan1918/models.git /tensorflow_models
+RUN pip install -r /tensorflow_models/official/requirements.txt
+
+ENV PYTHONPATH "${PYTHONPATH}:/src"
+ENV PYTHONPATH "${PYTHONPATH}:/tensorflow_models/"
