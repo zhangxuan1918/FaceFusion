@@ -42,13 +42,14 @@ def display(tfrecord_dir, bfm_path, image_size):
             tex_param=tex_para[0],
             color_param=color_para[0],
             illum_param=illum_para[0],
-            frame_height=224,
-            frame_width=224,
+            frame_height=image_size,
+            frame_width=image_size,
             tf_bfm=bfm
-        ).numpy()
+        ).numpy().astype(np.uint8)
 
         images = np.concatenate((image, image_rendered), axis=0)
         cv2.imwrite(filename.format(idx), images)
+        # cv2.imwrite(filename.format(idx), image_rendered)
         idx += 1
 
     print('\nDisplayed %d images' % idx)
