@@ -41,9 +41,10 @@ class TFRecordExporter:
             print('%-40s\r' % '', end='', flush=True)
             print('Add %d images.' % self.cur_images)
 
-    def choose_shuffled_order(self):
+    def choose_shuffled_order(self, random_shuffle):
         order = np.arange(self.expected_images)
-        np.random.RandomState(123).shuffle(order)
+        if random_shuffle:
+            np.random.RandomState(123).shuffle(order)
         return order
 
     def add_image(self, img):
@@ -84,12 +85,12 @@ class TFRecordExporter:
 
 
 def create_tfrecord(tfrecord_dir, image_filenames, image_size, process_label_fn, print_progress, progress_interval,
-                    resolution=224, label_size=430):
+                    resolution=224, label_size=430, random_shuffle=True):
     with TFRecordExporter(tfrecord_dir=tfrecord_dir,
                           expected_images=len(image_filenames),
                           print_progress=print_progress,
                           progress_interval=progress_interval) as tfr:
-        order = tfr.choose_shuffled_order()
+        order = tfr.choose_shuffled_order(random_shuffle=random_shuffle)
         labels = np.zeros((len(image_filenames), label_size), np.float32)
         for idx in range(order.size):
             try:
@@ -152,10 +153,11 @@ def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, 
     if len(image_filenames) != expected_images:
         raise Exception('Expected to find %d images in \'%s\'' % (expected_images, sub_folder))
     print('find %d images' % len(image_filenames))
-
+    # sort images
+    image_filenames.sort()
     return create_tfrecord(tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
-                           process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=resolution, is_aflw_2000=True), print_progress=print_progress,
-                           progress_interval=progress_interval, resolution=resolution)
+                           process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=True), print_progress=print_progress,
+                           progress_interval=progress_interval, resolution=resolution, random_shuffle=False)
 
 
 if __name__ == '__main__':

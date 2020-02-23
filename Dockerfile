@@ -2,6 +2,7 @@ FROM xuan1918/tensorflow/3dmm-rendering:v0.1.1-py3
 
 ARG SSH_PRV_KEY
 ARG SSH_PUB_KEY
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.7-dev
 
@@ -15,18 +16,15 @@ RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa.pub
 
+# OpenCV needed
+#RUN apt-get install -y pkg-config libgtk2.0-dev
+RUN pip install --upgrade pip
+
 # install tensorflow3DMMRendering from github
 RUN cd ~ && git clone git@github.com:zhangxuan1918/tensorflow3DMMRendering.git && \
  	python -m pip install tensorflow3DMMRendering/
 
 RUN rm -rf /root/.ssh/
-
-RUN pip install --upgrade pip
-
-# install other requirement
-ADD requirements.txt .
-RUN python -m pip install -r requirements.txt
-RUN rm requirements.txt
 
 # install tensorflow models
 RUN git clone https://github.com/zhangxuan1918/models.git /tensorflow_models
@@ -34,3 +32,8 @@ RUN pip install -r /tensorflow_models/official/requirements.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:/src"
 ENV PYTHONPATH "${PYTHONPATH}:/tensorflow_models/"
+
+# install requirements
+ADD requirements.txt .
+RUN pip install -r requirements.txt
+RUN rm requirements.txt

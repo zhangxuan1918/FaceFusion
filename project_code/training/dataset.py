@@ -99,7 +99,7 @@ class TFRecordDataset:
                 dset = dset.prefetch(((prefetch_mb << 20) - 1) // bytes_per_item + 1)
             self._tf_datasets = dset.batch(self._tf_minibatch_in)
 
-            self._tf_iterator = iter(self.strategy.experimental_distribute_datasets_from_function(self._tf_datasets))
+            self._tf_iterator = iter(self.strategy.experimental_distribute_dataset(self._tf_datasets))
 
     # Get next mini batch as TensorFlow expressions
     def get_minibatch_tf(self):
