@@ -104,7 +104,7 @@ def create_tfrecord(tfrecord_dir, image_filenames, image_size, process_label_fn,
                 img = np.asarray(img)
 
                 # load label, adjust params due to resize images
-                labels[tfr.cur_images] = process_label_fn(img_filename, 1.0 * resolution / image_size)
+                labels[tfr.cur_images] = process_label_fn(img_filename)
                 tfr.add_image(img)
             except:
                 print(sys.exc_info()[1])

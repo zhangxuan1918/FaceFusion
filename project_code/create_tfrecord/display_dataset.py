@@ -4,9 +4,10 @@ from create_tfrecord.export_tfrecord_util import split_300W_LP_labels, fn_unnorm
 from training import dataset
 from tf_3dmm.mesh.render import render_2
 import numpy as np
+import imageio
 
 
-def display(tfrecord_dir, bfm_path, image_size):
+def display(tfrecord_dir, bfm_path, image_size, num_images=5):
     print('Loading dataset %s' % tfrecord_dir)
 
     dset = dataset.TFRecordDataset(
@@ -23,7 +24,7 @@ def display(tfrecord_dir, bfm_path, image_size):
     idx = 0
     filename = '/opt/project/output/verify_dataset/20200222/image_{0}.jpg'
     fn_unnormalize_labels = fn_unnormalize_300W_LP_labels(bfm_path=bfm_path, image_size=image_size)
-    while idx < 5:
+    while idx < num_images:
         try:
             image_tensor, labels_tensor = dset.get_minibatch_tf()
             image = image_tensor[0].numpy()
@@ -48,8 +49,9 @@ def display(tfrecord_dir, bfm_path, image_size):
         ).numpy().astype(np.uint8)
 
         images = np.concatenate((image, image_rendered), axis=0)
-        cv2.imwrite(filename.format(idx), images)
+        # cv2.imwrite(filename.format(idx), images)
         # cv2.imwrite(filename.format(idx), image_rendered)
+        imageio.imsave(filename.format(idx), images)
         idx += 1
 
     print('\nDisplayed %d images' % idx)

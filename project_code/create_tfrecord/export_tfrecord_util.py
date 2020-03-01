@@ -21,7 +21,7 @@ def fn_extract_300W_LP_labels(bfm_path, image_size, is_aflw_2000=False):
         # Pose_Para: shape=(1, 7)
         # Exp_Para: shape=(29, 1)
         # Color_Para: shape=(1, 6): remove last value as it's always 1
-        # Illum_Para: shape=(1, 9): remove last value as it's always 2
+        # Illum_Para: shape=(1, 9): remove last value as it's always 20
         # pt2d: shape=(2, 68)
         # Tex_Para: shape=(40, 1)
         # Total: 430 params
@@ -130,9 +130,9 @@ def fn_unnormalize_300W_LP_labels(bfm_path, image_size):
         tex_para *= tex_ev
 
         # Color_Para: add last value as it's always 1
-        # Illum_Para: add last value as it's always 2
+        # Illum_Para: add last value as it's always 20
         color_para = tf.concat([color_para, tf.constant(1.0, shape=(batch_size, 1))], axis=1)
-        illum_para = tf.concat([illum_para, tf.constant(2.0, shape=(batch_size, 1))], axis=1)
+        illum_para = tf.concat([illum_para, tf.constant(20.0, shape=(batch_size, 1))], axis=1)
         color_para = tf.expand_dims(color_para, axis=1)
         illum_para = tf.expand_dims(illum_para, axis=1)
         return roi, landmarks, pose_para_new, shape_para, tf.expand_dims(exp_para, axis=2), color_para, illum_para, tex_para

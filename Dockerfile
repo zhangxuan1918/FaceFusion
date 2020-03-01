@@ -16,8 +16,6 @@ RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa.pub
 
-# OpenCV needed
-#RUN apt-get install -y pkg-config libgtk2.0-dev
 RUN pip install --upgrade pip
 
 # install tensorflow3DMMRendering from github

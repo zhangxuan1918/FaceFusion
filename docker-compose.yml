@@ -4,17 +4,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xuan1918/facefusion:v0.0.5
-    ports:
-      - "6006:6006"
-      - "5000:5000"
+    image: xuan1918/facefusion:v0.0.7
     environment:
         - NVIDIA_VISIBLE_DEVICES=all
-        - DISPLAY
     env_file:
       - face_fusion.env
     volumes:
       - /home/xuan/Projects/data/:/opt/data/
-      - /tmp/.X11-unix:/tmp/.X11-unix
 
 #docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"

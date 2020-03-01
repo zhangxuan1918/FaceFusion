@@ -5,6 +5,4 @@ scipy==1.2.2
 imageio==2.5.0
 scikit-image==0.14.3
 scikit-learn==0.21.2
-opencv-python==4.2.0.32
-opencv-contrib-python==4.2.0.32
 six==1.14.0
