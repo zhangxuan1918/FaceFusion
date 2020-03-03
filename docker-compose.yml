@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xuan1918/facefusion:v0.0.7
+    image: xuan1918/facefusion:v0.0.9
     environment:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
@@ -13,3 +13,4 @@ services:
       - /home/xuan/Projects/data/:/opt/data/
 
 #docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"
+#docker-compose build --build-arg GITHUB_PAT="$(cat ~/.ssh/github_xuan_desktop_token)"
