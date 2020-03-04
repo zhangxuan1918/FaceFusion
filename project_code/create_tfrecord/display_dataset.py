@@ -2,10 +2,11 @@ import tensorflow as tf
 from tf_3dmm.mesh.reader import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-from create_tfrecord.export_tfrecord_util import split_300W_LP_labels, fn_unnormalize_300W_LP_labels
-from training import dataset
 import numpy as np
 import imageio
+
+from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_300W_LP_labels, split_300W_LP_labels
+from project_code.training import dataset
 
 
 def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
@@ -30,9 +31,6 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
         except tf.errors.OutOfRangeError:
             break
 
-        if idx == 4:
-            t = 1
-
         # render images using labels
         roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_300W_LP_labels(labels_tensor)
         roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = fn_unnormalize_labels(roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
@@ -51,8 +49,8 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
 
         for i in range(batch_size):
 
-            # images = np.concatenate((image_tensor[i].numpy().astype(np.uint8), image_rendered[i]), axis=0)
-            images = image_rendered[i]
+            images = np.concatenate((image_tensor[i].numpy().astype(np.uint8), image_rendered[i]), axis=0)
+            # images = image_rendered[i]
             imageio.imsave(filename.format(idx, i), images)
         idx += 1
 
@@ -62,6 +60,6 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
 if __name__ == '__main__':
     tfrecord_dir = '/opt/data/face-fuse/test/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    image_size = 450
+    image_size = 224
     num_images = 8
     display(tfrecord_dir, bfm_path, image_size, num_images=num_images)
