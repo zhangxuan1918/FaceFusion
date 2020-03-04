@@ -10,7 +10,7 @@ import numpy as np
 import scipy
 import tensorflow as tf
 
-from create_tfrecord.export_tfrecord_util import fn_extract_300W_LP_labels
+from project_code.create_tfrecord.export_tfrecord_util import fn_extract_300W_LP_labels
 
 
 class TFRecordExporter:
@@ -113,12 +113,12 @@ def create_tfrecord(tfrecord_dir, image_filenames, image_size, process_label_fn,
         return tfr.cur_images
 
 
-def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval):
+def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, resolution=224):
     expected_images = {
         'AFW': 5207,
         'AFW_Flip': 5207,
         'HELEN': 37676,
-        'HELEN_Flip': 5207,
+        'HELEN_Flip': 37676,
         'IBUG': 1786,
         'IBUG_Flip': 1786,
         'LFPW': 16556,
@@ -126,19 +126,27 @@ def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval):
     }
     image_size = 450
     image_filenames = []
-    for sub_name in os.walk(data_dir):
-        print('processing %s' % sub_name)
-        sub_folder = os.path.join(data_dir, sub_name)
-        glob_pattern = os.path.join(sub_folder, '*.jpg')
+    sub_name = '300W_LP'
+    sub_folder = os.path.join(data_dir, sub_name)
+    for dn in os.listdir(sub_folder):
+        if dn not in expected_images:
+            continue
+        print('processing %s' % dn)
+        im_folder = os.path.join(sub_folder, dn)
+        glob_pattern = os.path.join(im_folder, '*.jpg')
         image_names = glob.glob(glob_pattern)
-        if len(image_names) != expected_images[sub_name]:
-            raise Exception('Expected to find %d images in \'%s\'' % (expected_images[sub_name], sub_folder))
+        if len(image_names) != expected_images[dn]:
+            raise Exception('Expected to find %d images in \'%s\', only found %d' % (expected_images[dn], sub_folder, len(image_names)))
         print('find %d images' % len(image_names))
         image_filenames.extend(image_names)
 
-    return create_tfrecord(tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
-                           process_label_fn=extract_300W_LP_labels, print_progress=print_progress,
-                           progress_interval=progress_interval)
+    return create_tfrecord(
+        tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
+        process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=False),
+        print_progress=print_progress,
+        progress_interval=progress_interval,
+        resolution=resolution, random_shuffle=True
+    )
 
 
 def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, resolution=224):
@@ -155,31 +163,57 @@ def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, 
     print('find %d images' % len(image_filenames))
     # sort images
     image_filenames.sort()
-    return create_tfrecord(tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
-                           process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=True), print_progress=print_progress,
-                           progress_interval=progress_interval, resolution=resolution, random_shuffle=False)
+    return create_tfrecord(
+        tfrecord_dir=tfrecord_dir, image_filenames=image_filenames, image_size=image_size,
+        process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=True),
+        print_progress=print_progress,
+        progress_interval=progress_interval,
+        resolution=resolution, random_shuffle=False)
+
+
+def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=True, progress_interval=1000):
+    meta = Path(os.path.join(tfrecord_dir, 'meta.json'))
+    tfrecord_train_dir = Path(os.path.join(tfrecord_dir, 'train'))
+    tfrecord_test_dir = Path(os.path.join(tfrecord_dir, 'test'))
+
+    if is_300w_lp:
+        print('====== process 300W LP  =======')
+        image_train_size = create_300W_LP(
+            tfrecord_dir=tfrecord_train_dir,
+            data_dir=data_dir,
+            print_progress=print_progress,
+            progress_interval=progress_interval,
+            bfm_path=bfm_path
+        )
+    else:
+        image_train_size = 0
+
+    if is_aflw:
+        print('====== process AFLW  =======')
+        image_test_size = create_AFLW_2000(
+            tfrecord_dir=tfrecord_test_dir,
+            data_dir=data_dir,
+            print_progress=print_progress,
+            progress_interval=progress_interval,
+            bfm_path=bfm_path
+        )
+    else:
+        image_test_size = 0
+
+    with open(meta, 'w') as f:
+        json.dump(
+            {
+                'train_data_size': image_train_size,
+                'test_data_size': image_test_size
+            },
+            f
+        )
 
 
 if __name__ == '__main__':
     print_progress = True,
     progress_interval = 1000
-    meta = Path('/opt/data/face-fuse/meta.json')
-    tfrecord_dir = Path('/opt/data/face-fuse/test/')
+    tfrecord_dir = Path('/opt/data/face-fuse')
     data_dir = Path('/opt/data')
     bfm_path = Path('/opt/data/BFM/BFM.mat')
-    image_test_size = create_AFLW_2000(
-        tfrecord_dir=tfrecord_dir,
-        data_dir=data_dir,
-        print_progress=print_progress,
-        progress_interval=progress_interval,
-        bfm_path=bfm_path
-    )
-
-    with open(meta, 'w') as f:
-        json.dump(
-            {
-                'train_data_size': 0,
-                'test_data_size': image_test_size
-            },
-            f
-        )
+    main(is_aflw=True, is_300w_lp=True, tfrecord_dir=tfrecord_dir, data_dir=data_dir, bfm_path=bfm_path)
