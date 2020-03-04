@@ -4,7 +4,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xuan1918/facefusion:v0.0.9
+      args:
+        CUDA_BASE_VERSION: 10.1
+        UBUNTU_VERSION: 18.04
+        CUDNN_VERSION: 7.6.4.38
+        TENSORFLOW_VERSION: 2.1.0
+    image: xuan1918/facefusion:v0.1.1
     environment:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
@@ -14,3 +19,4 @@ services:
 
 #docker-compose build --build-arg SSH_PRV_KEY="$(cat ~/.ssh/id_rsa_github_deploy)" --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa_github_deploy.pub)"
 #docker-compose build --build-arg GITHUB_PAT="$(cat ~/.ssh/github_xuan_desktop_token)"
+#docker-compose build --no-cache --build-arg GITHUB_PAT="$(cat ~/.ssh/github_xuan_desktop_token)"
