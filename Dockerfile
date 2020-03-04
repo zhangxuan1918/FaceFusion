@@ -1,25 +1,20 @@
-FROM xuan1918/tensorflow/3dmm-rendering:v0.1.1-py3
+FROM xuan1918/tensorflow/3dmm-rendering:v0.2.2-py3
 
-ARG SSH_PRV_KEY
-ARG SSH_PUB_KEY
+ARG GITHUB_PAT
 
-# Add the keys and set permissions
-RUN mkdir -p /root/.ssh && \
-    chmod 0700 /root/.ssh && \
-    ssh-keyscan github.com > /root/.ssh/known_hosts
+RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.7-dev
 
-RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
-    echo "$SSH_PUB_KEY" > /root/.ssh/id_rsa.pub && \
-    chmod 600 /root/.ssh/id_rsa && \
-    chmod 600 /root/.ssh/id_rsa.pub
+RUN pip install --upgrade pip
 
-# install tensorflow3DMMRendering from github
-RUN cd ~ && git clone git@github.com:zhangxuan1918/tensorflow3DMMRendering.git && \
- 	python -m pip install tensorflow3DMMRendering/
+# install tensorflow3DMMRendering
+RUN pip install git+https://zhangxuan1918:$GITHUB_PAT@github.com/zhangxuan1918/tensorflow3DMMRendering.git
 
-RUN rm -rf /root/.ssh/
+# install tensorflow models
+#RUN git clone https://github.com/zhangxuan1918/models.git /tensorflow_models
+#RUN pip install -r /tensorflow_models/official/requirements.txt
+#ENV PYTHONPATH "${PYTHONPATH}:/tensorflow_models/"
 
-# install other requirement
+# install requirements
 ADD requirements.txt .
-RUN python -m pip install -r requirements.txt
+RUN pip install -r requirements.txt
 RUN rm requirements.txt

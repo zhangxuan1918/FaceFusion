@@ -13,10 +13,10 @@ pose_para_mean = np.zeros((1, 7))
 pose_para_var = np.zeros((1, 7))
 exp_para_mean = np.zeros((29, 1))
 exp_para_var = np.zeros((29, 1))
-color_para_mean = np.zeros((1, 7))
-color_para_var = np.zeros((1, 7))
-illum_para_mean = np.zeros((1, 10))
-illum_para_var = np.zeros((1, 10))
+color_para_mean = np.zeros((1, 6))
+color_para_var = np.zeros((1, 6))
+illum_para_mean = np.zeros((1, 9))
+illum_para_var = np.zeros((1, 9))
 tex_para_mean = np.zeros((40, 1))
 tex_para_var = np.zeros((40, 1))
 
@@ -32,6 +32,8 @@ def compute_mean_var(x, x_mean, x_var, n):
 
 keys = ['roi', 'Shape_Para', 'Pose_Para', 'Exp_Para', 'Color_Para', 'Illum_Para', 'pt2d', 'Tex_Para']
 all_pose = []
+all_color = []
+all_illum = []
 
 for mat_file in mat_paths:
     mat_contents = sio.loadmat(str(mat_file))
@@ -44,11 +46,15 @@ for mat_file in mat_paths:
     pose_para[0, 6] = pose_para[0, 6] * 224. / 450.
     pose_para_mean, pose_para_var = compute_mean_var(pose_para, pose_para_mean, pose_para_var, counter)
     exp_para_mean, exp_para_var = compute_mean_var(mat_contents['Exp_Para'], exp_para_mean, exp_para_var, counter)
-    color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'], color_para_mean, color_para_var, counter)
-    illum_para_mean, illum_para_var = compute_mean_var(mat_contents['Illum_Para'], illum_para_mean, illum_para_var, counter)
+    color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'][:, :6], color_para_mean, color_para_var, counter)
+    illum_para_mean, illum_para_var = compute_mean_var(mat_contents['Illum_Para'][:, :9], illum_para_mean, illum_para_var, counter)
     tex_para_mean, tex_para_var = compute_mean_var(mat_contents['Tex_Para'][:40, :], tex_para_mean, tex_para_var, counter)
 
+    # print(pose_para)
     all_pose.append(pose_para)
+    all_color.append(mat_contents['Color_Para'][:, :6])
+    all_illum.append(mat_contents['Illum_Para'][:, :9])
+
     if counter % 1000 == 0:
         print('counter= %d' % counter)
         # print(pose_para_mean)
@@ -56,6 +62,10 @@ for mat_file in mat_paths:
         #
         # print(color_para_var)
         # print(color_para_var / (counter - 1))
+
+all_pose = np.array(all_pose)
+all_color = np.array(all_color)
+all_illum = np.array(all_illum)
 
 # replace 0 var to be 1
 shape_para_var[shape_para_var < 0.000001] = 1.
@@ -72,7 +82,7 @@ print('min color var %5f' % np.min(color_para_var))
 print('min illum var %5f' % np.min(illum_para_var))
 print('min tex var %5f' % np.min(tex_para_var))
 
-np.savez('stats_300W_LP',
+np.savez('/opt/data/face-fuse/stats_300W_LP',
          Shape_Para_mean=shape_para_mean,
          Shape_Para_std=np.sqrt(shape_para_var / (counter - 1)),
          Pose_Para_mean=pose_para_mean,

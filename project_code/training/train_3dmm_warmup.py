@@ -46,7 +46,7 @@ def train_3dmm_warmup(
 
     loss_weights = {
         'shape': 10,
-        'pose': 10,
+        'pose': 1,
         'exp': 10,
         'color': 5,
         'illum': 5,
@@ -92,8 +92,8 @@ def train_3dmm_warmup(
                         tf.summary.scalar(param, metric.result(), step=optimizer.iterations)
                         metric.reset_states()
 
-            if batch_id % config.eval_freq == 0:
-            # if batch_id > 0 and batch_id % config.eval_freq == 0:
+            # if batch_id % config.eval_freq == 0:
+            if batch_id > 0 and batch_id % config.eval_freq == 0:
                 print('evaluate on test dataset')
                 with test_summary_writer.as_default():
                     test_3dmm_warmup_one_step(
