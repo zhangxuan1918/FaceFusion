@@ -1,4 +1,4 @@
-from project_code.models.networks_resnet50 import ConvBlock
+from project_code.models.resnet50 import ConvBlock
 
 conv_block = ConvBlock(kernel_size=3, filters=[64, 64, 256], stage=2, block=1, stride=(1, 1),
                        trainable=True)

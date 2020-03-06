@@ -1,5 +1,4 @@
-from project_code.models.networks_resnet50 import Resnet50
-import tensorflow as tf
+from project_code.models.resnet50 import Resnet50
 
 resnet50 = Resnet50()
 resnet50.build(input_shape=(None, 224, 224, 3))
