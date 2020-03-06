@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
+
 import tensorflow as tf
-from tensorflow.python.keras import layers, Input, Model
+from tensorflow.python.keras import Input
 from tensorflow.python.keras.layers import Conv2D, Activation, BatchNormalization, MaxPooling2D, AveragePooling2D, \
     Flatten, Dense
 from tensorflow.python.keras.regularizers import l2
