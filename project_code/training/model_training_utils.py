@@ -104,7 +104,8 @@ def run_customized_training_loop(
         def _test_step_fn(inputs):
             inputs, labels = inputs
             model_outputs = model(inputs, training=False)
-
+            loss = loss_fn(labels, model_outputs)
+            eval_loss_metric.update_state(loss)
         strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
     if not run_eagerly:

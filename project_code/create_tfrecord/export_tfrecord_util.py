@@ -133,6 +133,14 @@ def fn_unnormalize_300W_LP_labels(bfm_path, image_size, n_tex_para):
     return unnormalize_labels
 
 
+def fn_recover_and_unnormalize_params(bfm_path, image_size, n_tex_para):
+    fn_unnormalize_labels = fn_unnormalize_300W_LP_labels(bfm_path=bfm_path, image_size=image_size,
+                                                          n_tex_para=n_tex_para)
+    def recover_and_unnormalize_params(params):
+        return fn_unnormalize_labels(*split_300W_LP_labels(params))
+    return recover_and_unnormalize_params
+
+
 def fn_extract_coarse_80k(img_filename):
     # label file has the same name as image
     # txt format
