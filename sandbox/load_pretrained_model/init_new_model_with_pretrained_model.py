@@ -1,6 +1,6 @@
 from tensorflow.python import keras
 
-from project_code.models.networks_resnet50 import ConvBlock, create_identity_bock
+from project_code.models.resnet50 import ConvBlock, create_identity_bock
 from project_code.models.networks_linear_3dmm import Face3DMM
 
 face_model = Face3DMM()
