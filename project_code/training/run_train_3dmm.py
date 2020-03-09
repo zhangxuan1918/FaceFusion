@@ -8,8 +8,6 @@ import tensorflow as tf
 
 from project_code.misc.utils import EasyDict
 from project_code.training.dataset import TFRecordDataset
-from project_code.training.model import init_model
-from project_code.training.model_training_utils import run_customized_training_loop
 
 flags.DEFINE_string('train_data_path', None, 'Path to training data for 3DMM')
 flags.DEFINE_string('eval_data_path', None, 'Path to evaluating data for 3DMM')

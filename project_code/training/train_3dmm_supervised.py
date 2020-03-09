@@ -98,6 +98,7 @@ class TrainFaceModelSupervised:
             batch_size=self.train_batch_size,
             num_gpu=self.num_gpu
         )
+        self.train_dataset.reset_iterator(self.strategy)
         self.eval_dataset = TFRecordDataset(
             tfrecord_dir=self.eval_dir,
             resolution=self.resolution,
@@ -106,6 +107,7 @@ class TrainFaceModelSupervised:
             batch_size=self.eval_batch_size,
             num_gpu=self.num_gpu
         )
+        self.eval_dataset.reset_iterator(self.strategy)
 
     def _get_model(self):
         if self.backbone == 'resnet50':

@@ -2,14 +2,6 @@ import tensorflow as tf
 from tf_3dmm.mesh.reader import render_batch
 
 
-def get_simple_loss_fn(loss_factor=1.0):
-    def regression_loss(gt_params, est_params):
-        loss = tf.reduce_mean(tf.square(gt_params - est_params))
-        return loss * loss_factor
-
-    return regression_loss
-
-
 def get_reconstruct_loss_fn(image_size, loss_factor=1.0):
     def regression_loss(gt_images, gt_params, est_params, tf_bfm, batch_size):
         # gt_params: EasyDict
