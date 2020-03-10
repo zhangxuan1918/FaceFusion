@@ -36,7 +36,7 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
         # render images using labels
         roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_300W_LP_labels(labels_tensor)
         # roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = fn_unnormalize_labels(roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
-        roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = unnormalize_labels(bfm, image_size, n_tex_para, roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
+        roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para = unnormalize_labels(bfm, batch_size, image_size, roi, landmarks, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
         image_rendered = render_batch(
             pose_param=pose_para,
             shape_param=shape_para,

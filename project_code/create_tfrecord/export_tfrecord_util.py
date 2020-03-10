@@ -143,7 +143,7 @@ def fn_unnormalize_300W_LP_labels(bfm_path, image_size, n_tex_para):
     return unnormalize_labels
 
 
-def unnormalize_labels(bfm, image_size, n_tex_para, roi, landmarks, pose_para, shape_para, exp_para, color_para,
+def unnormalize_labels(bfm, batch_size, image_size, roi, landmarks, pose_para, shape_para, exp_para, color_para,
                        illum_para, tex_para):
     # roi: shape=(None, 4) or None
     # Shape_Para: shape=(None, 199)
@@ -155,8 +155,6 @@ def unnormalize_labels(bfm, image_size, n_tex_para, roi, landmarks, pose_para, s
     # Tex_Para: shape=(None, 40)
     # image_size
     # n_tex_para: number of texture coefficients used
-
-    batch_size = pose_para.shape[0]
 
     if roi is not None:
         roi *= image_size

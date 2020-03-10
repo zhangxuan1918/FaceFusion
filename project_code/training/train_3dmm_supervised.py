@@ -224,8 +224,6 @@ class TrainFaceModelSupervised:
     def _replicated_step(self, inputs):
         reals, labels = inputs
         reals = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range, drange_net=self.drange_net)
-        # remove the region of interests from labels
-        labels = labels[:, 4:]
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
             loss = self.get_loss(labels, model_outputs)
@@ -331,6 +329,9 @@ class TrainFaceModelSupervised:
 
         training_summary = {
             'stage': self.stage,
+            'backbone': self.backbone,
+            'init_checkpoint': self.init_checkpoint,
+            'init_model_weight_path': self.init_model_weight_path,
             'total_training_steps': self.total_training_steps,
             'train_loss': float_metric_value(self.train_loss_metric)
         }
@@ -362,14 +363,14 @@ if __name__ == '__main__':
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
-        initial_lr=0.001,  # initial learning rate
+        initial_lr=0.0001,  # initial learning rate
         init_checkpoint=None,  # initial checkpoint to restore model if provided
-        init_model_weight_path='/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
+        init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
-        stage='SUPERVISED',  # stage name
-        backbone='resnet50',  # model architecture
+        stage='UNSUPERVISED',  # stage name
+        backbone='resnet18',  # model architecture
         distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         run_eagerly=True,
         model_output_size=426
