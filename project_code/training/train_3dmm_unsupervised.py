@@ -5,7 +5,11 @@ import os
 
 import tensorflow as tf
 from absl import flags
+from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
+from project_code.create_tfrecord.export_tfrecord_util import fn_recover_and_unnormalize_params, split_300W_LP_labels, \
+    unnormalize_labels
 from project_code.misc import distribution_utils
 from project_code.misc.image_utils import process_reals
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
@@ -22,9 +26,10 @@ flags.DEFINE_string(
 )
 
 
-class TrainFaceModelSupervised:
+class TrainFaceModelUnsupervised:
 
     def __init__(self,
+                 bfm_dir, # face model directory, /<bfm_dir>/BFM.mat
                  data_dir,  # data directory for training and evaluating, /<data_dir>/train/, /<data_dir>/test/, /<data_dir>/meta.json
                  model_dir,  # model directory for saving trained model
                  epochs=1,  # number of epochs for training
@@ -41,7 +46,7 @@ class TrainFaceModelSupervised:
                  backbone='resnet50',  # model architecture
                  distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
                  run_eagerly=True,
-                 model_output_size=426, # model output size, total number of face parameters
+                 n_tex_para=40, # number of texture parameters used in BFM model
                  drange_net=[-1, 1] # dynamic range for input images
                  ):
         # load meta data
@@ -49,11 +54,10 @@ class TrainFaceModelSupervised:
             input_meta_data = json.load(f)
             self.train_data_size = input_meta_data['train_data_size']
             self.eval_data_size = input_meta_data['test_data_size']
+            self.output_size = input_meta_data['output_size']  # output size, number of face params
             logging.info('Training dataset size: %d' % self.train_data_size)
             logging.info('Evaluating dataset size: %d' % self.eval_data_size)
-
-        self.output_size = model_output_size
-        logging.info('Face model parameter size: %d' % self.output_size)
+            logging.info('Face model parameter size: %d' % self.output_size)
 
         self.stage = stage
         self.epochs = epochs
@@ -115,8 +119,15 @@ class TrainFaceModelSupervised:
 
         self.run_eagerly = run_eagerly  # whether to run training eagerly
 
+        self.bfm_dir = bfm_dir
+        self.n_tex_para = n_tex_para
+        self.bfm = None
+        self.postprocess_labels = None
+
         logging.info('Initial learning rate: %f' % self.initial_lr)
         logging.info('Run eagerly: %s' % self.run_eagerly)
+
+        self.setup_model_dir()
 
     def setup_model_dir(self):
         # check if model directory exits, if so, raise error
@@ -125,6 +136,14 @@ class TrainFaceModelSupervised:
                 raise ValueError('`model_dir` already exits: %s' % self.model_dir)
         else:
             os.makedirs(self.model_dir)
+
+    def init_bfm(self):
+        bfm_path = os.path.join(self.bfm_dir, 'BFM.mat')
+        self.bfm = TfMorphableModel(
+            model_path=bfm_path,
+            n_tex_para=self.n_tex_para
+        )
+        self.postprocess_labels = fn_recover_and_unnormalize_params(bfm_path, self.resolution, self.n_tex_para)
 
     def create_dataset(self):
         self.train_dir = os.path.join(self.data_dir, 'train')
@@ -191,12 +210,6 @@ class TrainFaceModelSupervised:
                 logging.info('Loading from model weights file completed')
 
     def train(self):
-        logging.info('%s Setting up model directory ...' % self.stage)
-        self.setup_model_dir()
-
-        logging.info('%s Initializing logs ...' % self.stage)
-        self.init_logs()
-
         logging.info('%s Creating data ...' % self.stage)
         self.create_dataset()
 
@@ -206,12 +219,57 @@ class TrainFaceModelSupervised:
         logging.info('%s Setting up metrics ...' % self.stage)
         self.init_metrics()
 
+        logging.info('%s Initializing face model ...' % self.stage)
+        self.init_bfm()
+
         logging.info('%s Starting customized training ...' % self.stage)
         self.run_customized_training_steps()
 
-    def get_loss(self, gt, est):
-        loss = tf.reduce_mean(tf.square(gt - est))
-        return loss / self.strategy.num_replicas_in_sync
+    def get_loss(self, gt_images, gt_params, est_params):
+        # split params and unnormalize params
+        _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = split_300W_LP_labels(gt_params)
+
+        _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = unnormalize_labels(
+            self.bfm, self.resolution, self.n_tex_para, None, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex)
+
+        _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
+
+        _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = unnormalize_labels(
+            self.bfm, self.resolution, self.n_tex_para, None, est_lm, est_pp, est_shape, est_exp, est_color, est_illum,
+            est_tex)
+
+        # geo loss, render with estimated geo parameters and ground truth pose
+        est_geo_gt_pose_images = render_batch(
+            pose_param=gt_pp,
+            shape_param=est_shape,
+            exp_param=est_exp,
+            tex_param=est_tex,
+            color_param=est_color,
+            illum_param=est_illum,
+            frame_width=self.resolution,
+            frame_height=self.resolution,
+            tf_bfm=self.bfm,
+            batch_size=tf.shape(gt_pp)[0]
+        )
+        loss_pose = tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images))
+
+        # pose loss, render with estimated pose parameters and ground truth geo parameters
+        gt_geo_est_pose_images = render_batch(
+            pose_param=est_pp,
+            shape_param=gt_shape,
+            exp_param=gt_exp,
+            tex_param=gt_tex,
+            color_param=gt_color,
+            illum_param=gt_illum,
+            frame_width=self.resolution,
+            frame_height=self.resolution,
+            tf_bfm=self.bfm,
+            batch_size=tf.shape(est_pp)[0]
+        )
+        loss_geo = tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images))
+
+        coef = tf.constant(loss_geo / (loss_pose + loss_geo))
+        return (coef * loss_pose + (1 - coef) * loss_geo) / self.strategy.num_replicas_in_sync
 
     def init_metrics(self):
         self.train_loss_metric = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
@@ -223,12 +281,10 @@ class TrainFaceModelSupervised:
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
-        reals = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range, drange_net=self.drange_net)
-        # remove the region of interests from labels
-        labels = labels[:, 4:]
+        reals_input = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range, drange_net=self.drange_net)
         with tf.GradientTape() as tape:
-            model_outputs = self.model(reals, training=True)
-            loss = self.get_loss(labels, model_outputs)
+            model_outputs = self.model(reals_input, training=True)
+            loss = self.get_loss(reals, labels, model_outputs)
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -255,9 +311,8 @@ class TrainFaceModelSupervised:
     def _test_step(self, iterator):
 
         def _test_step_fn(inputs):
-            reals, labels = inputs
-            reals = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range, drange_net=self.drange_net)
-            model_outputs = self.model(reals, training=False)
+            inputs, labels = inputs
+            model_outputs = self.model(inputs, training=False)
             loss = self.get_loss(labels, model_outputs)
             self.eval_loss_metric.update_state(loss)
 
@@ -371,8 +426,7 @@ if __name__ == '__main__':
         stage='SUPERVISED',  # stage name
         backbone='resnet50',  # model architecture
         distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
-        run_eagerly=True,
-        model_output_size=426
+        run_eagerly=True
     )
 
     train_model.train()

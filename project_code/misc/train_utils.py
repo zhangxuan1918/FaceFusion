@@ -1,6 +1,8 @@
 import json
 import logging
-import tensorflow.io.gfile as gfile
+import os
+
+import tensorflow as tf
 
 
 def save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
@@ -11,7 +13,7 @@ def save_checkpoint(checkpoint, model_dir, checkpoint_prefix):
 
 
 def float_metric_value(metric):
-    return metric.reset().numpy().astype(float)
+    return metric.result().numpy().astype(float)
 
 
 def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
@@ -29,6 +31,6 @@ def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
 def write_txt_summary(training_summary, summary_dir):
     summary_path = os.path.join(summary_dir, 'training_summary.txt')
 
-    with gfile.GFile(summary_path, 'wb') as f:
+    with tf.io.gfile.GFile(summary_path, 'wb') as f:
         logging.info('Training Summary: \n%s', str(training_summary))
         f.write(json.dumps(training_summary, indent=4))

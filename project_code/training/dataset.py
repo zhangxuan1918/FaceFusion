@@ -35,7 +35,7 @@ class TFRecordDataset:
                  shuffle_mb=4096,  # Shuffle data within specified window (megabytes), 0 = disable shuffling.
                  prefetch_mb=2048,  # Amount of data to prefetch (megabytes), 0 = disable prefetching.
                  buffer_mb=256,  # Read buffer size (megabytes).
-                 num_threads=2,   # Number of concurrent threads.
+                 num_threads=1,   # Number of concurrent threads.
                  num_gpu=1, # Number of gpu
                  ):  # Data distribution for multi gpu
         self.tfrecord_dir = tfrecord_dir
