@@ -17,7 +17,6 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
     dset = dataset.TFRecordDataset(
         tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False, shuffle_mb=0)
     strategy = tf.distribute.MirroredStrategy()
-    dset.reset_iterator(strategy)
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,

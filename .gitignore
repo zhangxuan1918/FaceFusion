@@ -3,3 +3,4 @@ project_code/data/
 __pycache__
 examples
 data
+/sandbox/prediction_pb_model/output/
