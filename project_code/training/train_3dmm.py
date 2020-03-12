@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 
 from project_code.misc import distribution_utils
-from project_code.misc.image_utils import process_reals
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
 from project_code.models.resnet18 import Resnet18
 from project_code.models.resnet50 import Resnet50

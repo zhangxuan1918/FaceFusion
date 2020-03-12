@@ -1,9 +1,7 @@
 import logging
-import logging
 import os
 
 import tensorflow as tf
-from absl import flags
 from tf_3dmm.mesh.reader import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
@@ -14,12 +12,6 @@ from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
 
 logging.basicConfig(level=logging.INFO)
-flags.DEFINE_string('train_data_path', None, 'Path to training data for 3DMM')
-flags.DEFINE_string('eval_data_path', None, 'Path to evaluating data for 3DMM')
-
-flags.DEFINE_string(
-    'input_meta_data_path', None, 'Path to file that contains meta dta about training and evaluating data'
-)
 
 
 class TrainFaceModelUnsupervised(TrainFaceModel):
