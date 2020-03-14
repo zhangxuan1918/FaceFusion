@@ -171,15 +171,15 @@ if __name__ == '__main__':
         epochs=3,  # number of epochs for training
         train_batch_size=32,  # batch size for training
         eval_batch_size=32,  # batch size for evaluating
-        steps_per_loop=1,  # steps per loop, for efficiency
-        initial_lr=0.0001,  # initial learning rate
-        init_checkpoint=None,  # initial checkpoint to restore model if provided
+        steps_per_loop=10,  # steps per loop, for efficiency
+        initial_lr=0.00005,  # initial learning rate
+        init_checkpoint='/opt/data/face-fuse/model/20200310/supervised/',  # initial checkpoint to restore model if provided
         init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
         stage='UNSUPERVISED',  # stage name
-        backbone='resnet18',  # model architecture
+        backbone='resnet50',  # model architecture
         distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         run_eagerly=True,
         model_output_size=426  # number of face parameters, we remove region of interests, roi from the data

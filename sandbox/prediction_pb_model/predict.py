@@ -1,3 +1,5 @@
+import os
+
 import PIL
 import imageio
 import tensorflow as tf
@@ -14,7 +16,7 @@ def load_model(pd_model_path):
     return tf.keras.models.load_model(pd_model_path)
 
 
-def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, num_batches, batch_size, resolution, n_tex_para):
+def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_batches, batch_size, resolution, n_tex_para):
     strategy = tf.distribute.MirroredStrategy()
     dset = dataset.TFRecordDataset(tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False,
                                    shuffle_mb=100, strategy=strategy)
@@ -26,7 +28,7 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, num_batches, b
     model = load_model(pd_model_path=pd_model_path)
 
     idx = 0
-    filename = '/opt/project/output/verify_dataset/20200222/image_batch_{0}_indx_{1}.jpg'
+    filename = os.path.join(save_to, 'image_batch_{0}_indx_{1}.jpg')
 
     while idx < num_batches:
         try:
@@ -97,11 +99,11 @@ if __name__ == '__main__':
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
     save_rendered_to = './output/'
-    tfrecord_dir = '/opt/data/face-fuse/train/'
+    tfrecord_dir = '/opt/data/face-fuse/test/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     pd_model_path = '/opt/data/face-fuse/model/20200310/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(
-        tfrecord_dir, bfm_path, pd_model_path, num_batches, batch_size=4, resolution=image_size, n_tex_para=n_tex_para
+        tfrecord_dir, bfm_path, pd_model_path, save_rendered_to, num_batches, batch_size=4, resolution=image_size, n_tex_para=n_tex_para
     )

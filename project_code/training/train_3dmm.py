@@ -174,7 +174,8 @@ class TrainFaceModel(ABC):
                 logging.info(
                     'Checkpoint file %s found and restoring.', self.init_checkpoint)
                 checkpoint = tf.train.Checkpoint(model=self.model)
-                checkpoint.restore(self.init_checkpoint).assert_existing_objects_matched()
+                latest_checkpoint_file = tf.train.latest_checkpoint(self.init_checkpoint)
+                checkpoint.restore(latest_checkpoint_file).assert_existing_objects_matched()
                 logging.info('Loading from checkpoint file completed')
             elif self.init_model_weight_path:
                 logging.info(
