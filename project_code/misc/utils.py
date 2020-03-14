@@ -1,6 +1,3 @@
-from typing import Any
-
-
 class EasyDict(dict):
     """Convenience class that behaves like a dict but allows access with the attribute syntax."""
 

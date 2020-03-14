@@ -113,7 +113,7 @@ def create_tfrecord(tfrecord_dir, image_filenames, image_size, process_label_fn,
         return tfr.cur_images
 
 
-def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, resolution=224):
+def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, label_size, resolution=224):
     expected_images = {
         'AFW': 5207,
         'AFW_Flip': 5207,
@@ -145,11 +145,12 @@ def create_300W_LP(tfrecord_dir, data_dir, print_progress, progress_interval, bf
         process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=False),
         print_progress=print_progress,
         progress_interval=progress_interval,
+        label_size=label_size,
         resolution=resolution, random_shuffle=True
     )
 
 
-def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, resolution=224):
+def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, bfm_path, label_size, resolution=224):
     expected_images = 2000
     image_size = 450
 
@@ -168,10 +169,11 @@ def create_AFLW_2000(tfrecord_dir, data_dir, print_progress, progress_interval, 
         process_label_fn=fn_extract_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, is_aflw_2000=True),
         print_progress=print_progress,
         progress_interval=progress_interval,
+        label_size=label_size,
         resolution=resolution, random_shuffle=False)
 
 
-def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=True, progress_interval=1000):
+def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, label_size=430, print_progress=True, progress_interval=1000):
     meta = Path(os.path.join(tfrecord_dir, 'meta.json'))
     tfrecord_train_dir = Path(os.path.join(tfrecord_dir, 'train'))
     tfrecord_test_dir = Path(os.path.join(tfrecord_dir, 'test'))
@@ -183,7 +185,8 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=T
             data_dir=data_dir,
             print_progress=print_progress,
             progress_interval=progress_interval,
-            bfm_path=bfm_path
+            bfm_path=bfm_path,
+            label_size=label_size
         )
     else:
         image_train_size = 0
@@ -195,7 +198,8 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=T
             data_dir=data_dir,
             print_progress=print_progress,
             progress_interval=progress_interval,
-            bfm_path=bfm_path
+            bfm_path=bfm_path,
+            label_size=label_size
         )
     else:
         image_test_size = 0
@@ -204,7 +208,8 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=T
         json.dump(
             {
                 'train_data_size': image_train_size,
-                'test_data_size': image_test_size
+                'test_data_size': image_test_size,
+                'output_size': label_size
             },
             f
         )
@@ -213,7 +218,10 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, bfm_path, print_progress=T
 if __name__ == '__main__':
     print_progress = True,
     progress_interval = 1000
+    label_size = 430
+
     tfrecord_dir = Path('/opt/data/face-fuse')
     data_dir = Path('/opt/data')
     bfm_path = Path('/opt/data/BFM/BFM.mat')
-    main(is_aflw=True, is_300w_lp=True, tfrecord_dir=tfrecord_dir, data_dir=data_dir, bfm_path=bfm_path)
+    main(is_aflw=True, is_300w_lp=True, tfrecord_dir=tfrecord_dir, data_dir=data_dir, bfm_path=bfm_path,
+         label_size=label_size)

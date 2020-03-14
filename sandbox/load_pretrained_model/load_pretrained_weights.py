@@ -18,7 +18,7 @@ def get_weights_from_hdf5(filepath):
                 layer_weights.append([l_name, weight_names, weight_values])
         return layer_weights
 
-layer_weights = get_weights_from_hdf5(filepath='G:\PycharmProjects\FaceFusion\project_code\data\face_vgg_v2\weights.h5')
+layer_weights = get_weights_from_hdf5(filepath='/opt/data/face_fuse/face_vgg_v2/weights.h5')
 
 for l_name, weight_name, weight_value in layer_weights:
     print(l_name, weight_name, weight_value.shape)

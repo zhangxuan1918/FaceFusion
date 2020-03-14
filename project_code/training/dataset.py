@@ -35,7 +35,9 @@ class TFRecordDataset:
                  shuffle_mb=4096,  # Shuffle data within specified window (megabytes), 0 = disable shuffling.
                  prefetch_mb=2048,  # Amount of data to prefetch (megabytes), 0 = disable prefetching.
                  buffer_mb=256,  # Read buffer size (megabytes).
-                 num_threads=2   # Number of concurrent threads.
+                 num_threads=1,   # Number of concurrent threads.
+                 num_gpu=1, # Number of gpu
+                 strategy=None # distributing strategy
                  ):  # Data distribution for multi gpu
         self.tfrecord_dir = tfrecord_dir
         self.resolution = resolution
@@ -49,8 +51,12 @@ class TFRecordDataset:
         self._tf_datasets = None
         self._tf_iterator = None
         self._tf_batch_in = batch_size
-        self.strategy = tf.distribute.MirroredStrategy()
-        self._tf_global_batch_in = batch_size * self.strategy.num_replicas_in_sync
+        if num_gpu > 0:
+            self._tf_global_batch_in = batch_size * num_gpu
+        else:
+            self._tf_global_batch_in = self._tf_batch_in
+
+        self.strategy = strategy
 
         assert os.path.isdir(self.tfrecord_dir)
         tfr_files = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.tfrecords')))
@@ -93,12 +99,11 @@ class TFRecordDataset:
             if prefetch_mb > 0:
                 dset = dset.prefetch(((prefetch_mb << 20) - 1) // bytes_per_item + 1)
             self._tf_datasets = dset.batch(self._tf_global_batch_in)
-
             self._tf_iterator = iter(self.strategy.experimental_distribute_dataset(self._tf_datasets))
-
     # Get next mini batch as TensorFlow expressions
+
     def get_minibatch_tf(self):
         return next(self._tf_iterator)
 
-    def get_distribute_strategy(self):
-        return self.strategy
+    def __next__(self):
+        return next(self._tf_iterator)

@@ -9,7 +9,7 @@ from tensorflow.python.keras.regularizers import l2
 from project_code.models.resnet_uil import conv_block_v2, identity_block_v2, WEIGHT_DECAY
 
 
-class Resnet(tf.keras.Model):
+class Resnet50(tf.keras.Model):
 
     def __init__(self, image_size, num_output, **kwargs):
         self.image_size = image_size
@@ -27,7 +27,7 @@ class Resnet(tf.keras.Model):
         x = Flatten()(x)
         x = Dense(self.num_output, name='fc')(x)
 
-        super(Resnet, self).__init__(
+        super(Resnet50, self).__init__(
             inputs=inputs, outputs=x, **kwargs
         )
 
@@ -74,5 +74,5 @@ class Resnet(tf.keras.Model):
 
 
 if __name__ == '__main__':
-    resnet50 = Resnet(image_size=224, num_output=450)
+    resnet50 = Resnet50(image_size=224, num_output=450)
     resnet50.summary()
