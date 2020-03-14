@@ -57,8 +57,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         logging.info('%s Initializing logs ...' % self.stage)
         self.init_logs()
 
-        logging.info('%s Creating data ...' % self.stage)
-        self.create_dataset()
+        logging.info('%s Creating training data ...' % self.stage)
+        self.create_training_dataset()
 
         logging.info('%s Initializing model ...' % self.stage)
         self.init_model()

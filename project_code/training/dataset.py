@@ -37,6 +37,7 @@ class TFRecordDataset:
                  buffer_mb=256,  # Read buffer size (megabytes).
                  num_threads=1,   # Number of concurrent threads.
                  num_gpu=1, # Number of gpu
+                 strategy=None # distributing strategy
                  ):  # Data distribution for multi gpu
         self.tfrecord_dir = tfrecord_dir
         self.resolution = resolution
@@ -55,7 +56,7 @@ class TFRecordDataset:
         else:
             self._tf_global_batch_in = self._tf_batch_in
 
-        self.strategy = tf.distribute.MirroredStrategy()
+        self.strategy = strategy
 
         assert os.path.isdir(self.tfrecord_dir)
         tfr_files = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.tfrecords')))

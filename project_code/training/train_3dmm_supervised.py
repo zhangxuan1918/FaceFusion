@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 import tensorflow as tf
@@ -97,9 +98,10 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             logging.error(e)
 
+    date_yyyymmdd = datetime.datetime.today().strftime('%Y%m%d')
     train_model = TrainFaceModelSupervised(
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/20200310/supervised/',  # model directory for saving trained model
+        model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),  # model directory for saving trained model
         epochs=3,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating

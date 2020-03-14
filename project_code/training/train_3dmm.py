@@ -132,7 +132,8 @@ class TrainFaceModel(ABC):
             max_label_size='full',
             repeat=True,
             batch_size=self.train_batch_size,
-            num_gpu=self.num_gpu
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
         )
 
     def create_evaluating_dataset(self):
@@ -144,7 +145,8 @@ class TrainFaceModel(ABC):
             max_label_size='full',
             repeat=False,
             batch_size=self.eval_batch_size,
-            num_gpu=self.num_gpu
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
         )
 
     def _get_model(self):

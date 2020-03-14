@@ -6,6 +6,7 @@ import numpy as np
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
+from project_code.misc.image_utils import process_reals
 from project_code.training import dataset
 
 
@@ -14,9 +15,9 @@ def load_model(pd_model_path):
 
 
 def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, num_batches, batch_size, resolution, n_tex_para):
-
-    dset = dataset.TFRecordDataset(tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False, shuffle_mb=0)
     strategy = tf.distribute.MirroredStrategy()
+    dset = dataset.TFRecordDataset(tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False,
+                                   shuffle_mb=100, strategy=strategy)
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,
@@ -29,8 +30,10 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, num_batches, b
 
     while idx < num_batches:
         try:
-            image_tensor, gt_params = dset.get_minibatch_tf()
-            est_params = model(image_tensor)
+            reals, gt_params = dset.get_minibatch_tf()
+            reals = process_reals(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
+                                  drange_net=[-1, 1])
+            est_params = model(reals)
         except tf.errors.OutOfRangeError:
             break
 
@@ -80,12 +83,23 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, num_batches, b
 
 
 if __name__ == '__main__':
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+
+        except RuntimeError as e:
+            raise e
+
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
     save_rendered_to = './output/'
     tfrecord_dir = '/opt/data/face-fuse/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200310/supervised-exported'
+    pd_model_path = '/opt/data/face-fuse/model/20200310/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(
