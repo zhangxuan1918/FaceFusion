@@ -115,7 +115,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         )
         loss_geo = tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images))
 
-        coef = tf.constant(loss_geo / (loss_pose + loss_geo))
+        coef = (loss_geo / (loss_pose + loss_geo))
         return (coef * loss_pose + (1 - coef) * loss_geo) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
@@ -169,8 +169,8 @@ if __name__ == '__main__':
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/20200310/unsupervised/',  # model directory for saving trained model
         epochs=3,  # number of epochs for training
-        train_batch_size=32,  # batch size for training
-        eval_batch_size=32,  # batch size for evaluating
+        train_batch_size=16,  # batch size for training
+        eval_batch_size=16,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint='/opt/data/face-fuse/model/20200310/supervised/',  # initial checkpoint to restore model if provided

@@ -1,4 +1,4 @@
-FROM xuan1918/tensorflow/3dmm-rendering:v0.2.2-py3
+FROM xuan1918/tensorflow/3dmm-rendering:v0.2.3-py3
 
 ARG GITHUB_PAT
 
