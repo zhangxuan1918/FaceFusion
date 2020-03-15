@@ -180,7 +180,8 @@ if __name__ == '__main__':
         num_gpu=1,  # number of gpus
         stage='UNSUPERVISED',  # stage name
         backbone='resnet50',  # model architecture
-        distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
+        # distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
+        distribute_strategy='one_device',
         run_eagerly=True,
         model_output_size=426  # number of face parameters, we remove region of interests, roi from the data
     )

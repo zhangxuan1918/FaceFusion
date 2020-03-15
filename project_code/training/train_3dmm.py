@@ -92,7 +92,7 @@ class TrainFaceModel(ABC):
         if self.distribute_strategy.lower() == 'mirror':
             self.strategy = tf.distribute.MirroredStrategy()
         else:
-            self.strategy = tf.distribute.OneDeviceStrategy('/cpu:0')
+            self.strategy = tf.distribute.OneDeviceStrategy('/gpu:0')
 
         self.train_dataset = None  # training dataset
         self.eval_dataset = None  # testing dataset
