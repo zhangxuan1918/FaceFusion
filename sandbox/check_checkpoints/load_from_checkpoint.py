@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from project_code.models.networks_linear_3dmm import Face3DMM
+from project_code.models.old.networks_linear_3dmm import Face3DMM
 
 checkpoint_dir = 'G:\PycharmProjects\FaceFusion\project_code\data\supervised_fine_tuned_model\\2019-06-08\models'
 
