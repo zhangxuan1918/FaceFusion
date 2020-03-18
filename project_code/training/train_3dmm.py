@@ -36,7 +36,7 @@ class TrainFaceModel(ABC):
                  distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
                  run_eagerly=True,
                  model_output_size=426,  # model output size, total number of face parameters
-                 drange_net=[-1, 1]  # dynamic range for input images
+                 drange_net=[-1, 1]  # dynamic range for input images,
                  ):
         # load meta data
         with open(os.path.join(data_dir, 'meta.json'), 'r') as f:
@@ -106,7 +106,6 @@ class TrainFaceModel(ABC):
         self.use_float16 = False  # whether to use float16
         self.summary_dir = None  # tensorflow summary folder
         self.eval_summary_writer = None  # tensorflow summary writer
-
         self.run_eagerly = run_eagerly  # whether to run training eagerly
 
         logging.info('Initial learning rate: %f' % self.initial_lr)

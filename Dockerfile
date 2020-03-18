@@ -18,3 +18,8 @@ RUN pip install git+https://zhangxuan1918:$GITHUB_PAT@github.com/zhangxuan1918/t
 ADD requirements.txt .
 RUN pip install -r requirements.txt
 RUN rm requirements.txt
+
+# add CUPTI to library
+#ENV LD_LIBRARY_PATH "/usr/local/cuda/extras/CUPTI/lib64:${LD_LIBRARY_PATH}" # not working
+RUN echo '/usr/local/cuda/extras/CUPTI/lib64' >> /etc/ld.so.conf
+RUN ldconfig && ldconfig -p | grep libcupti
