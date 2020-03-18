@@ -182,11 +182,11 @@ if __name__ == '__main__':
         bfm_dir='/opt/data/BFM/',
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/20200310/unsupervised/',  # model directory for saving trained model
-        epochs=3,  # number of epochs for training
-        train_batch_size=16,  # batch size for training
-        eval_batch_size=16,  # batch size for evaluating
+        epochs=10,  # number of epochs for training
+        train_batch_size=32,  # batch size for training
+        eval_batch_size=32,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
-        initial_lr=0.0005,  # initial learning rate
+        initial_lr=0.00005,  # initial learning rate
         init_checkpoint='/opt/data/face-fuse/model/20200310/supervised/',  # initial checkpoint to restore model if provided
         init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
