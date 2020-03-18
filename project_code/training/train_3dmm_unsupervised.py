@@ -2,8 +2,7 @@ import logging
 import os
 
 import tensorflow as tf
-from tensorflow.python.eager import profiler
-from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, \
@@ -82,6 +81,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         #     self.run_customized_training_steps()
 
         if self.enable_profiler:
+            os.makedirs(os.path.join(self.summary_dir, 'profiler'))
             from tensorflow.python.eager import profiler
             profiler.start_profiler_server(6019)
         self.run_customized_training_steps()
@@ -185,7 +185,7 @@ if __name__ == '__main__':
         epochs=3,  # number of epochs for training
         train_batch_size=16,  # batch size for training
         eval_batch_size=16,  # batch size for evaluating
-        steps_per_loop=1,  # steps per loop, for efficiency
+        steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.0005,  # initial learning rate
         init_checkpoint='/opt/data/face-fuse/model/20200310/supervised/',  # initial checkpoint to restore model if provided
         init_model_weight_path=None,
@@ -198,7 +198,7 @@ if __name__ == '__main__':
         distribute_strategy='one_device',
         run_eagerly=True,
         model_output_size=426,  # number of face parameters, we remove region of interests, roi from the data
-        enable_profiler=True
+        enable_profiler=False
     )
 
     train_model.train()
