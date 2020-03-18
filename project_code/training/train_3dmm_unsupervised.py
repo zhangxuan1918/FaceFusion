@@ -1,6 +1,5 @@
 import logging
 import os
-
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
