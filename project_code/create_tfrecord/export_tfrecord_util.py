@@ -85,13 +85,22 @@ def split_300W_LP_labels(labels):
 
     if labels.shape[1] == 426:
         # without roi
+        # with landmarks
         lm, pp, shape_para, exp_para, color_para, illum_para, tex_para = \
             tf.split(labels, num_or_size_splits=[136, 7, 199, 29, 6, 9, 40], axis=1)
         return None, lm, pp, shape_para, exp_para, color_para, illum_para, tex_para
     elif labels.shape[1] == 430:
+        # with roi
+        # with landmarks
         roi, lm, pp, shape_para, exp_para, color_para, illum_para, tex_para = \
             tf.split(labels, num_or_size_splits=[4, 136, 7, 199, 29, 6, 9, 40], axis=1)
         return roi, lm, pp, shape_para, exp_para, color_para, illum_para, tex_para
+    elif labels.shape[1] == 290:
+        # without roi
+        # without landmarks
+        pp, shape_para, exp_para, color_para, illum_para, tex_para = \
+            tf.split(labels, num_or_size_splits=[7, 199, 29, 6, 9, 40], axis=1)
+        return None, None, pp, shape_para, exp_para, color_para, illum_para, tex_para
     else:
         raise Exception('`labels` shape[1] is wrong')
 
@@ -162,7 +171,8 @@ def unnormalize_labels(bfm, batch_size, image_size, roi, landmarks, pose_para, s
     # translation and scaling
     pose_para_new = tf.concat([pose_para[:, 0:3], pose_para[:, 3:6] * image_size, pose_para[:, 6:] * image_size / 100000.], axis=1)
 
-    landmarks = tf.reshape(landmarks, (batch_size, 2, -1)) * image_size  # (None, 2, 68)
+    if landmarks is not None:
+        landmarks = tf.reshape(landmarks, (batch_size, 2, -1)) * image_size  # (None, 2, 68)
 
     # rescale shape, exp and tex by their eigenvalue
     shape_para *= tf.squeeze(bfm.shape_ev)

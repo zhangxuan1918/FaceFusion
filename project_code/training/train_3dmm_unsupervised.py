@@ -1,8 +1,8 @@
 import logging
 import os
+
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, \
     unnormalize_labels
@@ -14,28 +14,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TrainFaceModelUnsupervised(TrainFaceModel):
-
-    def __init__(self, bfm_dir, data_dir, model_dir, epochs=1, train_batch_size=16, eval_batch_size=16,
-                 steps_per_loop=1, initial_lr=0.001, init_checkpoint=None, init_model_weight_path=None, resolution=224,
-                 num_gpu=1, stage='SUPERVISED', backbone='resnet50', distribute_strategy='mirror', run_eagerly=True,
-                 n_tex_para=40, model_output_size=426, drange_net=[-1, 1], enable_profiler=False):
-        # load meta data
-
-        super().__init__(data_dir, model_dir, epochs, train_batch_size, eval_batch_size, steps_per_loop, initial_lr,
-                         init_checkpoint, init_model_weight_path, resolution, num_gpu, stage, backbone,
-                         distribute_strategy, run_eagerly, model_output_size, drange_net)
-
-        self.bfm_dir = bfm_dir
-        self.n_tex_para = n_tex_para
-        self.bfm = None
-        self.enable_profiler = enable_profiler
-
-    def init_bfm(self):
-        bfm_path = os.path.join(self.bfm_dir, 'BFM.mat')
-        self.bfm = TfMorphableModel(
-            model_path=bfm_path,
-            n_tex_para=self.n_tex_para
-        )
 
     def init_optimizer(self):
         learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -129,7 +107,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         loss_geo = tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images))
 
         coef = (loss_geo / (loss_pose + loss_geo))
-        return (coef * loss_pose + (1 - coef) * loss_geo) / self.strategy.num_replicas_in_sync
+        return (coef * loss_geo + (1 - coef) * loss_pose) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -179,6 +157,7 @@ if __name__ == '__main__':
 
     train_model = TrainFaceModelUnsupervised(
         bfm_dir='/opt/data/BFM/',
+        n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/20200310/unsupervised/',  # model directory for saving trained model
         epochs=10,  # number of epochs for training
@@ -196,7 +175,7 @@ if __name__ == '__main__':
         # distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         distribute_strategy='one_device',
         run_eagerly=True,
-        model_output_size=426,  # number of face parameters, we remove region of interests, roi from the data
+        model_output_size=290,  # number of face parameters, we remove region of interests, roi from the data
         enable_profiler=False
     )
 

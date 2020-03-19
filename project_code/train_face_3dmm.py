@@ -98,7 +98,7 @@ flags.DEFINE_bool(
 )
 
 flags.DEFINE_integer(
-    'model_output_size', 426,
+    'model_output_size', 290,
     'number of face parameters, we remove region of interests, roi from the data'
 )
 
@@ -125,6 +125,8 @@ def main(_):
 
     if FLAGS.stage == 'SUPERVISED':
         train_model = TrainFaceModelSupervised(
+            bfm_dir=FLAGS.bfm_dir,
+            n_tex_para=40,
             data_dir=FLAGS.data_dir,  # data directory for training and evaluating
             model_dir=FLAGS.model_dir,
             # model directory for saving trained model
@@ -142,11 +144,13 @@ def main(_):
             backbone=FLAGS.backbone,  # model architecture
             distribute_strategy=FLAGS.distribute_strategy,  # distribution strategy when num_gpu > 1
             run_eagerly=FLAGS.run_eagerly,
-            model_output_size=FLAGS.model_output_size
+            model_output_size=FLAGS.model_output_size,
+            enable_profiler=False
         )
     elif FLAGS.stage == 'UNSUPERVISED':
         train_model = TrainFaceModelUnsupervised(
             bfm_dir=FLAGS.bfm_dir,
+            n_tex_para=40,
             data_dir=FLAGS.data_dir,  # data directory for training and evaluating
             model_dir=FLAGS.model_dir,
             # model directory for saving trained model
@@ -164,7 +168,8 @@ def main(_):
             backbone=FLAGS.backbone,  # model architecture
             distribute_strategy=FLAGS.distribute_strategy,  # distribution strategy when num_gpu > 1
             run_eagerly=FLAGS.run_eagerly,
-            model_output_size=FLAGS.model_output_size
+            model_output_size=FLAGS.model_output_size,
+            enable_profiler=False
         )
     else:
         raise ValueError('`stage` is invalid')

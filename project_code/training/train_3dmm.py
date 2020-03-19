@@ -5,6 +5,7 @@ import os
 from abc import ABC, abstractmethod
 
 import tensorflow as tf
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.misc import distribution_utils
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
@@ -18,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 class TrainFaceModel(ABC):
 
     def __init__(self,
+                 bfm_dir,
                  data_dir,
                  # data directory for training and evaluating, /<data_dir>/train/, /<data_dir>/test/, /<data_dir>/meta.json
                  model_dir,  # model directory for saving trained model
@@ -35,8 +37,10 @@ class TrainFaceModel(ABC):
                  backbone='resnet50',  # model architecture
                  distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
                  run_eagerly=True,
-                 model_output_size=426,  # model output size, total number of face parameters
-                 drange_net=[-1, 1]  # dynamic range for input images,
+                 n_tex_para=40, # number of texture parameters to use
+                 model_output_size=290,  # model output size, total number of face parameters
+                 drange_net=[-1, 1],  # dynamic range for input images,
+                 enable_profiler=False # whether enable profiling server running
                  ):
         # load meta data
         with open(os.path.join(data_dir, 'meta.json'), 'r') as f:
@@ -111,6 +115,11 @@ class TrainFaceModel(ABC):
         logging.info('Initial learning rate: %f' % self.initial_lr)
         logging.info('Run eagerly: %s' % self.run_eagerly)
 
+        self.bfm_dir = bfm_dir
+        self.n_tex_para = n_tex_para
+        self.bfm = None
+        self.enable_profiler = enable_profiler
+
     def setup_model_dir(self):
         # check if model directory exits, if so, raise error
         if os.path.isdir(self.model_dir):
@@ -155,6 +164,13 @@ class TrainFaceModel(ABC):
             return Resnet18(image_size=self.resolution, num_output=self.output_size)
         else:
             raise ValueError('`backbone` not supported: %s' % self.backbone)
+
+    def init_bfm(self):
+        bfm_path = os.path.join(self.bfm_dir, 'BFM.mat')
+        self.bfm = TfMorphableModel(
+            model_path=bfm_path,
+            n_tex_para=self.n_tex_para
+        )
 
     @abstractmethod
     def init_optimizer(self):
