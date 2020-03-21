@@ -2,8 +2,8 @@ import datetime
 import logging
 
 import tensorflow as tf
-from absl import flags
 
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
 from project_code.misc.image_utils import process_reals
 from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
@@ -42,12 +42,46 @@ class TrainFaceModelSupervised(TrainFaceModel):
         logging.info('%s Setting up metrics ...' % self.stage)
         self.init_metrics()
 
+        logging.info('%s Initializing face model ...' % self.stage)
+        self.init_bfm()
+
         logging.info('%s Starting customized training ...' % self.stage)
         self.run_customized_training_steps()
 
-    def get_loss(self, gt, est):
-        loss = tf.reduce_mean(tf.square(gt - est))
-        return loss / self.strategy.num_replicas_in_sync
+    def get_loss(self, gt_params, est_params, batch_size):
+        # gt contains roi, landmarks and all face parameters
+        # est only contains face parameters
+        # split params and unnormalize params
+        _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = split_300W_LP_labels(gt_params)
+        # unnormalize grountruth landmarks
+        gt_lm = tf.reshape(gt_lm, (batch_size, 2, -1)) * self.resolution
+
+        fake_roi, fake_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
+
+        # geo/texture related loss
+        loss_geo = tf.reduce_mean(tf.square(gt_color - est_color))
+        loss_geo += tf.reduce_mean(tf.square(gt_illum - est_illum))
+        loss_geo += tf.reduce_mean(tf.square(gt_tex - est_tex))
+
+        # shape related loss, we compute the difference between landmarks
+        _, _, est_pp, est_shape, est_exp, _, _, _ = unnormalize_labels(
+            self.bfm, batch_size, self.resolution, fake_roi, fake_lm, est_pp, est_shape, est_exp, est_color, est_illum,
+            est_tex)
+
+        est_lm = self.bfm.get_landmarks(
+            shape_param=est_shape,
+            exp_param=est_exp,
+            pose_param=est_pp,
+            batch_size=batch_size,
+            resolution=self.resolution,
+            is_2d=True,
+            is_plot=True
+        )
+
+        loss_lm = tf.reduce_mean(tf.square(gt_lm - est_lm)) / self.resolution
+
+        coef = (loss_geo / (loss_lm + loss_geo))
+        return (coef * loss_geo + (1 - coef) * loss_lm) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -55,7 +89,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
                               drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
-            loss = self.get_loss(labels[:, 4:], model_outputs)
+            loss = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.train_batch_size)
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -78,7 +112,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
             reals = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
                                   drange_net=self.drange_net)
             model_outputs = self.model(reals, training=False)
-            loss = self.get_loss(labels[:, 4:], model_outputs)
+
+            loss = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
             self.eval_loss_metric.update_state(loss)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
@@ -100,9 +135,11 @@ if __name__ == '__main__':
 
     date_yyyymmdd = datetime.datetime.today().strftime('%Y%m%d')
     train_model = TrainFaceModelSupervised(
+        bfm_dir='/opt/data/BFM/',
+        n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),  # model directory for saving trained model
-        epochs=3,  # number of epochs for training
+        epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
@@ -116,7 +153,8 @@ if __name__ == '__main__':
         backbone='resnet50',  # model architecture
         distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         run_eagerly=True,
-        model_output_size=426
+        model_output_size=290,
+        enable_profiler=False
     )
 
     train_model.train()
