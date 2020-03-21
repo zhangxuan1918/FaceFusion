@@ -51,6 +51,27 @@ class TrainFaceModelSupervised(TrainFaceModel):
         # self.coef_lm = None
         self.run_customized_training_steps()
 
+    def init_metrics(self):
+        # training loss metrics
+        self.train_loss_metrics = {
+            # training loss metric for texture
+            'loss_geo': tf.keras.metrics.Mean('train_loss_geo', dtype=tf.float32),
+            # training loss metric for landmarks
+            'loss_lm': tf.keras.metrics.Mean('train_loss_lm', dtype=tf.float32),
+            # training loss metric for shape, exp and pose parameters
+            'loss_shape': tf.keras.metrics.Mean('train_loss_shape', dtype=tf.float32)
+        }
+
+        # evaluating loss metrics
+        self.eval_loss_metrics = {
+            # evaluating loss metric for texture
+            'loss_geo': tf.keras.metrics.Mean('eval_loss_geo', dtype=tf.float32),
+            # evaluating loss metric for landmarks
+            'loss_lm': tf.keras.metrics.Mean('eval_loss_lm', dtype=tf.float32),
+            # evaluating loss metric for shape, exp and pose parameters
+            'loss_shape': tf.keras.metrics.Mean('eval_loss_shape', dtype=tf.float32)
+        }
+
     def get_loss(self, gt_params, est_params, batch_size):
         # gt contains roi, landmarks and all face parameters
         # est only contains face parameters
@@ -85,13 +106,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
             is_plot=True
         )
 
-        loss_lm = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm)))
-        loss_total = loss_lm + loss_geo + loss_shape
+        loss_lm = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm))) / self.resolution
         # TODO: try https://www.tensorflow.org/api_docs/python/tf/Variable
         # self.coef_geo = tf.Variable((loss_lm + loss_shape) / (2.0 * loss_total), trainable=False)
         # self.coef_lm = tf.Variable((loss_geo + loss_shape) / (2.0 * loss_total), trainable=False)
         # return (self.coef_geo * loss_geo + self.coef_lm * loss_lm + (1.0 - self.coef_geo - self.coef_lm) * loss_geo) / self.strategy.num_replicas_in_sync
-        return loss_total / self.strategy.num_replicas_in_sync
+        return loss_geo / self.strategy.num_replicas_in_sync, loss_lm / self.strategy.num_replicas_in_sync, loss_shape / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -99,7 +119,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
                               drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
-            loss = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.train_batch_size)
+            loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.train_batch_size)
+            loss = loss_geo + loss_lm + loss_shape
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -109,7 +130,9 @@ class TrainFaceModelSupervised(TrainFaceModel):
             grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-        self.train_loss_metric.update_state(loss)
+        self.train_loss_metrics['loss_geo'].update_state(loss_geo)
+        self.train_loss_metrics['loss_lm'].update_state(loss_lm)
+        self.train_loss_metrics['loss_shape'].update_state(loss_shape)
 
     def _train_single_step(self, iterator):
         self.strategy.experimental_run_v2(self._replicated_step, args=(next(iterator),))
@@ -123,8 +146,10 @@ class TrainFaceModelSupervised(TrainFaceModel):
                                   drange_net=self.drange_net)
             model_outputs = self.model(reals, training=False)
 
-            loss = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
-            self.eval_loss_metric.update_state(loss)
+            loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
+            self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
+            self.eval_loss_metrics['loss_lm'].update_state(loss_lm)
+            self.eval_loss_metrics['loss_shape'].update_state(loss_shape)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
