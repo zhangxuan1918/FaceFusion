@@ -135,7 +135,9 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             reals_input = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
                                         drange_net=self.drange_net)
             model_outputs = self.model(reals_input, training=False)
-            loss = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.eval_batch_size)
+
+            bz = min(self.eval_batch_size, int(tf.shape(reals)[0].numpy()))
+            loss = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, bz)
             self.eval_loss_metric.update_state(loss)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))

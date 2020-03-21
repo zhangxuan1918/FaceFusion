@@ -151,7 +151,7 @@ class TrainFaceModel(ABC):
             tfrecord_dir=self.eval_dir,
             resolution=self.resolution,
             max_label_size='full',
-            repeat=False,
+            repeat=True,
             batch_size=self.eval_batch_size,
             num_gpu=self.num_gpu,
             strategy=self.strategy
@@ -234,11 +234,8 @@ class TrainFaceModel(ABC):
         pass
 
     def _run_evaluation(self, current_training_step, test_iterator):
-        while True:
-            try:
-                self._test_step(test_iterator)
-            except tf.errors.OutOfRangeError:
-                break
+        for _ in range(self.eval_steps):
+            self._test_step(test_iterator)
 
         with self.eval_summary_writer.as_default():
             eval_loss = float_metric_value(self.eval_loss_metric)

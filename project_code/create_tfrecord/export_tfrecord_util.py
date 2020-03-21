@@ -81,8 +81,7 @@ def split_300W_LP_labels(labels):
     pt2d: shape=(None, 136)
     Tex_Para: shape=(None, 40)
     """
-    assert isinstance(labels, tf.Tensor) and labels.shape[1] in (426, 430)
-
+    assert isinstance(labels, tf.Tensor)
     if labels.shape[1] == 426:
         # without roi
         # with landmarks

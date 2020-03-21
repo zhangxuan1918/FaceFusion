@@ -93,7 +93,7 @@ flags.DEFINE_enum(
 )
 
 flags.DEFINE_bool(
-    'run_eagerly', True,
+    'run_eagerly', False,
     'run in eager mode, default true'
 )
 

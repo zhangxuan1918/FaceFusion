@@ -78,7 +78,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
             is_plot=True
         )
 
-        loss_lm = tf.reduce_mean(tf.square(gt_lm - est_lm))
+        loss_lm = tf.reduce_mean(tf.square(gt_lm - est_lm)) / self.resolution
 
         coef = (loss_geo / (loss_lm + loss_geo))
         return (coef * loss_geo + (1 - coef) * loss_lm) / self.strategy.num_replicas_in_sync
@@ -112,7 +112,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
             reals = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
                                   drange_net=self.drange_net)
             model_outputs = self.model(reals, training=False)
-            loss = self.get_loss(labels[:, 4:], model_outputs)
+
+            loss = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
             self.eval_loss_metric.update_state(loss)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
@@ -138,7 +139,7 @@ if __name__ == '__main__':
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),  # model directory for saving trained model
-        epochs=3,  # number of epochs for training
+        epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
