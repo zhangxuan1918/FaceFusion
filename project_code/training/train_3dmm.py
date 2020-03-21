@@ -105,8 +105,8 @@ class TrainFaceModel(ABC):
         self.model = None
         self.optimizer = None
         self.initial_lr = initial_lr
-        self.train_loss_metric = None
-        self.eval_loss_metric = None
+        self.train_loss_metrics = {}
+        self.eval_loss_metrics = {}
         self.use_float16 = False  # whether to use float16
         self.summary_dir = None  # tensorflow summary folder
         self.eval_summary_writer = None  # tensorflow summary writer
@@ -206,9 +206,9 @@ class TrainFaceModel(ABC):
     def get_loss(self, **kwargs):
         pass
 
+    @abstractmethod
     def init_metrics(self):
-        self.train_loss_metric = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-        self.eval_loss_metric = tf.keras.metrics.Mean('eval_loss', dtype=tf.float32)
+        pass
 
     def init_logs(self):
         self.summary_dir = os.path.join(self.model_dir, 'summaries')
@@ -238,9 +238,16 @@ class TrainFaceModel(ABC):
             self._test_step(test_iterator)
 
         with self.eval_summary_writer.as_default():
-            eval_loss = float_metric_value(self.eval_loss_metric)
-            logging.info('%s Step: [%d] Validation %s = %f' % (self.stage, current_training_step,
-                                                               self.eval_loss_metric.name, eval_loss))
+
+            evaluating_status = [
+                '%s Step: [%d] Validation ' % (self.stage, current_training_step)
+            ]
+            for metric_name, metric in self.train_loss_metrics.items():
+                m_loss = float_metric_value(metric)
+                metric_status = '%s = %f' % (metric_name, m_loss)
+                evaluating_status.append(metric_status)
+
+            logging.info(', '.join(evaluating_status))
             self.eval_summary_writer.flush()
 
     def run_customized_training_steps(self):
@@ -268,7 +275,8 @@ class TrainFaceModel(ABC):
         checkpoint_name = 'rtl_step_{step}.ckpt'
 
         while current_step < self.total_training_steps:
-            self.train_loss_metric.reset_states()
+            for metric in self.train_loss_metrics.values():
+                metric.reset_states()
 
             steps = steps_to_run(current_step, self.steps_per_epoch, self.steps_per_loop)
 
@@ -279,11 +287,16 @@ class TrainFaceModel(ABC):
 
             current_step += steps
 
-            train_loss = float_metric_value(self.train_loss_metric)
-            training_status = '%s Train Step: %d/%d  / loss = %s' % (
-            self.stage, current_step, self.total_training_steps, train_loss)
+            training_status = [
+                '%s Train Step: %d/%d  / ' % (self.stage, current_step, self.total_training_steps)
+            ]
+            for metric_name, metric in self.train_loss_metrics.items():
 
-            logging.info(training_status)
+                m_loss = float_metric_value(metric)
+                metric_status = '%s = %f' % (metric_name, m_loss)
+                training_status.append(metric_status)
+
+            logging.info(', '.join(training_status))
 
             if current_step % self.steps_per_epoch == 0:
                 if current_step < self.total_training_steps:
@@ -292,7 +305,8 @@ class TrainFaceModel(ABC):
                 logging.info('%s Running evaluation after step: %s' % (self.stage, current_step))
                 self.create_evaluating_dataset()
                 self._run_evaluation(current_step, self.eval_dataset)
-                self.eval_loss_metric.reset_states()
+                for metric in self.eval_loss_metrics.values():
+                    metric.reset_states()
 
         save_checkpoint(checkpoint, self.model_dir, checkpoint_name.format(step=current_step))
 
@@ -306,8 +320,8 @@ class TrainFaceModel(ABC):
             'init_checkpoint': self.init_checkpoint,
             'init_model_weight_path': self.init_model_weight_path,
             'total_training_steps': self.total_training_steps,
-            'train_loss': float_metric_value(self.train_loss_metric),
-            'eval_metric': float_metric_value(self.eval_loss_metric)
+            'train_loss': {metric_name: float_metric_value(metric) for metric_name, metric in self.train_loss_metrics.items()},
+            'eval_metric': {metric_name: float_metric_value(metric) for metric_name, metric in self.eval_loss_metrics.items()},
         }
 
         write_txt_summary(training_summary, self.summary_dir)

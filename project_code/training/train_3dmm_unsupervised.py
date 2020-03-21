@@ -49,19 +49,28 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
         logging.info('%s Starting customized training ...' % self.stage)
 
-        # if self.enable_profiler:
-        #     profiler_dir = os.path.join(self.summary_dir, 'profiler')
-        #     os.mkdir(profiler_dir)
-        #     with profiler.Profiler(profiler_dir):
-        #         self.run_customized_training_steps()
-        # else:
-        #     self.run_customized_training_steps()
-
         if self.enable_profiler:
             os.makedirs(os.path.join(self.summary_dir, 'profiler'))
             from tensorflow.python.eager import profiler
             profiler.start_profiler_server(6019)
         self.run_customized_training_steps()
+
+    def init_metrics(self):
+        # training loss metrics
+        self.train_loss_metrics = {
+            # training loss metric for texture
+            'loss_geo': tf.keras.metrics.Mean('train_loss_geo', dtype=tf.float32),
+            # training loss metric for pose
+            'loss_pose': tf.keras.metrics.Mean('train_loss_pose', dtype=tf.float32),
+        }
+
+        # evaluating loss metrics
+        self.eval_loss_metrics = {
+            # evaluating loss metric for texture
+            'loss_geo': tf.keras.metrics.Mean('eval_loss_geo', dtype=tf.float32),
+            # evaluating loss metric for landmarks
+            'loss_pose': tf.keras.metrics.Mean('eval_loss_pose', dtype=tf.float32),
+        }
 
     def get_loss(self, gt_images, gt_params, est_params, batch_size):
         # split params and unnormalize params
@@ -106,7 +115,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         )
         loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images)))
 
-        return loss_geo + loss_pose
+        return loss_geo / self.strategy.num_replicas_in_sync, loss_pose / self.strategy.num_replicas_in_sync
         # if loss_geo too big, make is smaller, so we balance the loss between geo and pose
         # coef = tf.Variable((loss_geo / (loss_pose + loss_geo)))
         # return ((1 - coef) * loss_geo + coef * loss_pose) / self.strategy.num_replicas_in_sync
@@ -117,7 +126,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
                                     drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals_input, training=True)
-            loss = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.train_batch_size)
+            loss_geo, loss_pose = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.train_batch_size)
+            loss = loss_geo + loss_pose
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -127,7 +137,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-        self.train_loss_metric.update_state(loss)
+        self.train_loss_metrics['loss_geo'].update_state(loss_geo)
+        self.train_loss_metrics['loss_pose'].update_state(loss_pose)
 
     @tf.function
     def _test_step(self, iterator):
@@ -138,9 +149,9 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
                                         drange_net=self.drange_net)
             model_outputs = self.model(reals_input, training=False)
 
-            bz = min(self.eval_batch_size, int(tf.shape(reals)[0].numpy()))
-            loss = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, bz)
-            self.eval_loss_metric.update_state(loss)
+            loss_geo, loss_pose = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.eval_batch_size)
+            self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
+            self.eval_loss_metrics['loss_pose'].update_state(loss_pose)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
@@ -169,7 +180,7 @@ if __name__ == '__main__':
         eval_batch_size=32,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
-        init_checkpoint='/opt/data/face-fuse/model/20200310/supervised/',  # initial checkpoint to restore model if provided
+        init_checkpoint='/opt/data/face-fuse/model/20200321/supervised/',  # initial checkpoint to restore model if provided
         init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
