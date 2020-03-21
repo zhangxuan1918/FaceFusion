@@ -89,7 +89,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
-        loss_pose = tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images))
+        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images)))
 
         # pose loss, render with estimated pose parameters and ground truth geo parameters
         gt_geo_est_pose_images = render_batch(
@@ -104,11 +104,12 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
-        loss_geo = tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images))
+        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images)))
 
+        return loss_geo + loss_pose
         # if loss_geo too big, make is smaller, so we balance the loss between geo and pose
-        coef = (loss_geo / (loss_pose + loss_geo))
-        return ((1 - coef) * loss_geo + coef * loss_pose) / self.strategy.num_replicas_in_sync
+        # coef = tf.Variable((loss_geo / (loss_pose + loss_geo)))
+        # return ((1 - coef) * loss_geo + coef * loss_pose) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs

@@ -46,6 +46,9 @@ class TrainFaceModelSupervised(TrainFaceModel):
         self.init_bfm()
 
         logging.info('%s Starting customized training ...' % self.stage)
+        # workaround for loss computation
+        # self.coef_geo = None
+        # self.coef_lm = None
         self.run_customized_training_steps()
 
     def get_loss(self, gt_params, est_params, batch_size):
@@ -83,11 +86,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
         )
 
         loss_lm = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm)))
-
         loss_total = loss_lm + loss_geo + loss_shape
-        coef_geo = tf.constant((loss_lm + loss_shape) / (2 * loss_total))
-        coef_lm = tf.constant((loss_geo + loss_shape) / (2 * loss_total))
-        return (coef_geo * loss_geo + + coef_lm * loss_lm + (1 - coef_geo - coef_lm) * loss_geo) / self.strategy.num_replicas_in_sync
+        # TODO: try https://www.tensorflow.org/api_docs/python/tf/Variable
+        # self.coef_geo = tf.Variable((loss_lm + loss_shape) / (2.0 * loss_total), trainable=False)
+        # self.coef_lm = tf.Variable((loss_geo + loss_shape) / (2.0 * loss_total), trainable=False)
+        # return (self.coef_geo * loss_geo + self.coef_lm * loss_lm + (1.0 - self.coef_geo - self.coef_lm) * loss_geo) / self.strategy.num_replicas_in_sync
+        return loss_total / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -148,17 +152,17 @@ if __name__ == '__main__':
         epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
-        steps_per_loop=1,  # steps per loop, for efficiency
+        steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
-        init_checkpoint='/opt/data/face-fuse/model/20200320/supervised/',  # initial checkpoint to restore model if provided
-        init_model_weight_path=None, #"'/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
+        init_checkpoint=None,  # initial checkpoint to restore model if provided
+        init_model_weight_path='/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
         stage='UNSUPERVISED',  # stage name
         backbone='resnet50',  # model architecture
-        distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
-        run_eagerly=True,
+        distribute_strategy='one_device',  # distribution strategy when num_gpu > 1
+        run_eagerly=False,
         model_output_size=290,
         enable_profiler=False
     )
