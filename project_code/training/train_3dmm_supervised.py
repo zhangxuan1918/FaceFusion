@@ -59,9 +59,13 @@ class TrainFaceModelSupervised(TrainFaceModel):
         fake_roi, fake_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
 
         # geo/texture related loss
-        loss_geo = tf.reduce_mean(tf.square(gt_color - est_color))
-        loss_geo += tf.reduce_mean(tf.square(gt_illum - est_illum))
-        loss_geo += tf.reduce_mean(tf.square(gt_tex - est_tex))
+        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_color - est_color)))
+        loss_geo += tf.sqrt(tf.reduce_mean(tf.square(gt_illum - est_illum)))
+        loss_geo += tf.sqrt(tf.reduce_mean(tf.square(gt_tex - est_tex)))
+
+        loss_shape = tf.sqrt(tf.reduce_mean(tf.square(gt_shape - est_shape)))
+        loss_shape += tf.sqrt(tf.reduce_mean(tf.square(gt_exp - est_exp)))
+        loss_shape += tf.sqrt(tf.reduce_mean(tf.square(gt_pp - est_pp)))
 
         # shape related loss, we compute the difference between landmarks
         _, _, est_pp, est_shape, est_exp, _, _, _ = unnormalize_labels(
@@ -78,10 +82,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
             is_plot=True
         )
 
-        loss_lm = tf.reduce_mean(tf.square(gt_lm - est_lm)) / self.resolution
+        loss_lm = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm)))
 
-        coef = (loss_geo / (loss_lm + loss_geo))
-        return (coef * loss_geo + (1 - coef) * loss_lm) / self.strategy.num_replicas_in_sync
+        loss_total = loss_lm + loss_geo + loss_shape
+        coef_geo = tf.constant((loss_lm + loss_shape) / (2 * loss_total))
+        coef_lm = tf.constant((loss_geo + loss_shape) / (2 * loss_total))
+        return (coef_geo * loss_geo + + coef_lm * loss_lm + (1 - coef_geo - coef_lm) * loss_geo) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -142,10 +148,10 @@ if __name__ == '__main__':
         epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
-        steps_per_loop=10,  # steps per loop, for efficiency
+        steps_per_loop=1,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
-        init_checkpoint=None,  # initial checkpoint to restore model if provided
-        init_model_weight_path='/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
+        init_checkpoint='/opt/data/face-fuse/model/20200320/supervised/',  # initial checkpoint to restore model if provided
+        init_model_weight_path=None, #"'/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus

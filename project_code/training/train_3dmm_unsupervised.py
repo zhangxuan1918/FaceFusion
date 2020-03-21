@@ -106,8 +106,9 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         )
         loss_geo = tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images))
 
+        # if loss_geo too big, make is smaller, so we balance the loss between geo and pose
         coef = (loss_geo / (loss_pose + loss_geo))
-        return (coef * loss_geo + (1 - coef) * loss_pose) / self.strategy.num_replicas_in_sync
+        return ((1 - coef) * loss_geo + coef * loss_pose) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs

@@ -1,10 +1,9 @@
 import os
 
-import PIL
 import imageio
-import tensorflow as tf
-from tf_3dmm.mesh.reader import render_batch
 import numpy as np
+import tensorflow as tf
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
@@ -44,10 +43,10 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_b
         _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = unnormalize_labels(
             bfm, batch_size, resolution, None, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex)
 
-        _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
+        _, _, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
 
         _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = unnormalize_labels(
-            bfm, batch_size, resolution, None, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
+            bfm, batch_size, resolution, None, None, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
 
         gt_image = render_batch(
             pose_param=gt_pp,
@@ -98,10 +97,10 @@ if __name__ == '__main__':
 
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
-    save_rendered_to = './output/'
-    tfrecord_dir = '/opt/data/face-fuse/test/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/'
+    tfrecord_dir = '/opt/data/face-fuse/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200310/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200320/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(

@@ -26,7 +26,7 @@ def export_model_pb_file(backbone, resolution, output_size, checkpoint_dir, mode
 if __name__ == '__main__':
     backbone = 'resnet50'
     resolution = 224
-    output_size = 426
-    checkpoint_dir = '/opt/data/face-fuse/model/20200310/supervised/'
-    model_export_dir = '/opt/data/face-fuse/model/20200310/supervised-exported/'
+    output_size = 290
+    checkpoint_dir = '/opt/data/face-fuse/model/20200320/supervised/'
+    model_export_dir = '/opt/data/face-fuse/model/20200320/supervised-exported/'
     export_model_pb_file(backbone, resolution, output_size, checkpoint_dir, model_export_dir)

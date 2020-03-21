@@ -261,6 +261,10 @@ class TrainFaceModel(ABC):
             checkpoint.restore(latest_checkpoint_file)
             logging.info('%s Loading from checkpoint file completed' % self.stage)
         current_step = self.optimizer.iterations.numpy()
+
+        if current_step > 0:
+            self.total_training_steps += current_step
+
         checkpoint_name = 'rtl_step_{step}.ckpt'
 
         while current_step < self.total_training_steps:
