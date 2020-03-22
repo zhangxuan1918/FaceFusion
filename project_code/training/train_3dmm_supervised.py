@@ -93,7 +93,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
         # shape loss
         loss_shape = tf.sqrt(tf.reduce_mean(tf.square(gt_shape - est_shape)))
         loss_shape += tf.sqrt(tf.reduce_mean(tf.square(gt_exp - est_exp)))
-        # pose loss
+        # pose loss, 10 is chosen to make pose loss comparable to other loss
         loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_pp - est_pp))) * 10
 
         # shape related loss, we compute the difference between landmarks
@@ -110,7 +110,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
             is_2d=True,
             is_plot=True
         )
-
+        # loss for landmarks, 10 is chosen to make the landmark loss comparable to other loss
         loss_lm = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm))) / self.resolution * 10
         # TODO: try https://www.tensorflow.org/api_docs/python/tf/Variable
         # self.coef_geo = tf.Variable((loss_lm + loss_shape) / (2.0 * loss_total), trainable=False)
