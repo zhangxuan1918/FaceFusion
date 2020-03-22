@@ -319,7 +319,7 @@ class TrainFaceModel(ABC):
             'backbone': self.backbone,
             'init_checkpoint': self.init_checkpoint,
             'init_model_weight_path': self.init_model_weight_path,
-            'total_training_steps': self.total_training_steps,
+            'total_training_steps': int(self.total_training_steps),
             'train_loss': {metric_name: float_metric_value(metric) for metric_name, metric in self.train_loss_metrics.items()},
             'eval_metric': {metric_name: float_metric_value(metric) for metric_name, metric in self.eval_loss_metrics.items()},
         }

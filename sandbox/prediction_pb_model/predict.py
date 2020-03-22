@@ -100,7 +100,7 @@ if __name__ == '__main__':
     save_rendered_to = '/opt/project/output/adhoc_predict/'
     tfrecord_dir = '/opt/data/face-fuse/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200320/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200321/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(

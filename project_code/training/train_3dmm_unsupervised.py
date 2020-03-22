@@ -98,7 +98,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
-        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images)))
+        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images)))
 
         # pose loss, render with estimated pose parameters and ground truth geo parameters
         gt_geo_est_pose_images = render_batch(
@@ -113,7 +113,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
-        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images)))
+        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images)))
 
         return loss_geo / self.strategy.num_replicas_in_sync, loss_pose / self.strategy.num_replicas_in_sync
         # if loss_geo too big, make is smaller, so we balance the loss between geo and pose
@@ -174,7 +174,7 @@ if __name__ == '__main__':
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/20200310/unsupervised/',  # model directory for saving trained model
+        model_dir='/opt/data/face-fuse/model/20200321/unsupervised/',  # model directory for saving trained model
         epochs=10,  # number of epochs for training
         train_batch_size=32,  # batch size for training
         eval_batch_size=32,  # batch size for evaluating
