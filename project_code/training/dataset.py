@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 
 import numpy as np
@@ -57,6 +58,8 @@ class TFRecordDataset:
             self._tf_global_batch_in = self._tf_batch_in
 
         self.strategy = strategy
+        if self.strategy is None:
+            self.strategy = tf.distribute.OneDeviceStrategy('/gpu:0')
 
         assert os.path.isdir(self.tfrecord_dir)
         tfr_files = sorted(glob.glob(os.path.join(self.tfrecord_dir, '*.tfrecords')))
@@ -78,19 +81,29 @@ class TFRecordDataset:
             if os.path.isfile(guess):
                 self.label_file = guess
         else:
-            raise Exception('No label file found')
-        self._np_labels = np.load(self.label_file)
+            logging.info('Dataset: no label file found')
 
-        if max_label_size != 'full' and self._np_labels.shape[0] > max_label_size:
-            self._np_labels = self._np_labels[:max_label_size, :]
-        self.label_size = self._np_labels.shape[0]
-        self.label_dtype = self._np_labels.dtype.name
+        if self.label_file:
+            self._np_labels = np.load(self.label_file)
+
+            if max_label_size != 'full' and self._np_labels.shape[0] > max_label_size:
+                self._np_labels = self._np_labels[:max_label_size, :]
+            self.label_size = self._np_labels.shape[0]
+            self.label_dtype = self._np_labels.dtype.name
+        else:
+            self._np_labels = None
+            self.label_size = None
+            self.label_dtype = None
 
         with tf.name_scope('Dataset'), tf.device('/cpu:0'):
-            self._tf_labels_dataset = tf.data.Dataset.from_tensor_slices(self._np_labels)
+
             dset = tf.data.TFRecordDataset(tfr_file, compression_type='', buffer_size=buffer_mb << 20)
             dset = dset.map(parse_tfrecord_tf, num_parallel_calls=num_threads)
-            dset = tf.data.Dataset.zip((dset, self._tf_labels_dataset))
+
+            if self._np_labels:
+                _tf_labels_dataset = tf.data.Dataset.from_tensor_slices(self._np_labels)
+                dset = tf.data.Dataset.zip((dset, _tf_labels_dataset))
+
             bytes_per_item = np.prod(tfr_shape) * np.dtype(self.dtype).itemsize
             if shuffle_mb > 0:
                 dset = dset.shuffle(((shuffle_mb << 20) - 1) // bytes_per_item + 1)

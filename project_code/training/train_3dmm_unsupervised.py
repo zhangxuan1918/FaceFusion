@@ -4,7 +4,7 @@ import os
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, \
+from project_code.create_tfrecord_supervised.export_tfrecord_util import split_300W_LP_labels, \
     unnormalize_labels
 from project_code.misc.image_utils import process_reals
 from project_code.training.optimization import AdamWeightDecay
