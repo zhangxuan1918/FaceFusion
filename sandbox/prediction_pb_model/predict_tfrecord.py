@@ -32,9 +32,9 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_b
     while idx < num_batches:
         try:
             reals, gt_params = dset.get_minibatch_tf()
-            reals = process_reals(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
+            reals_input = process_reals(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
                                   drange_net=[-1, 1])
-            est_params = model(reals)
+            est_params = model(reals_input)
         except tf.errors.OutOfRangeError:
             break
 
@@ -75,7 +75,7 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_b
         ).numpy().astype(np.uint8)
 
         for i in range(batch_size):
-            images = np.concatenate((gt_image[i], est_image[i]), axis=0)
+            images = np.concatenate((reals[i].numpy().astype(np.uint8), gt_image[i], est_image[i]), axis=0)
             # images = image_rendered[i]
             imageio.imsave(filename.format(idx, i), images)
         idx += 1
@@ -97,10 +97,10 @@ if __name__ == '__main__':
 
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
-    save_rendered_to = '/opt/project/output/adhoc_predict/'
-    tfrecord_dir = '/opt/data/face-fuse/train/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised/'
+    tfrecord_dir = '/opt/data/face-fuse/supervised/test/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200321/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200322/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(
