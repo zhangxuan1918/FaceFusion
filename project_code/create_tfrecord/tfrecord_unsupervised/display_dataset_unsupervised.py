@@ -20,8 +20,9 @@ def display(tfrecord_dir, num_images=5):
         except tf.errors.OutOfRangeError:
             break
 
+        immk = tf.where(mask == 1, image, 0)
         for i in range(batch_size):
-            image_mask = np.concatenate((image[i].numpy().astype(np.uint8), mask[i].numpy().astype(np.uint8)), axis=0)
+            image_mask = np.concatenate((image[i].numpy().astype(np.uint8), immk[i].numpy().astype(np.uint8)), axis=0)
             imageio.imsave(filename.format(idx, i), image_mask)
         idx += 1
 

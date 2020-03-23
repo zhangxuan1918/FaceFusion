@@ -115,7 +115,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
-        reals = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range,
+        _, reals = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range,
                               drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
