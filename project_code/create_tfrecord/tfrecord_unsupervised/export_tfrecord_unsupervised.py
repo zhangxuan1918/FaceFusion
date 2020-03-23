@@ -5,15 +5,15 @@ import sys
 from pathlib import Path
 
 from project_code.create_tfrecord.export_tfrecord_util import load_image_from_file
-from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporter
+from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporterSupervised
 
 
 def create_tfrecord(tfrecord_dir, image_filenames, mask_filenames, image_size, print_progress, progress_interval,
                     resolution=224, random_shuffle=True):
-    with TFRecordExporter(tfrecord_dir=tfrecord_dir,
-                          expected_images=len(image_filenames),
-                          print_progress=print_progress,
-                          progress_interval=progress_interval) as tfr:
+    with TFRecordExporterSupervised(tfrecord_dir=tfrecord_dir,
+                                    expected_images=len(image_filenames),
+                                    print_progress=print_progress,
+                                    progress_interval=progress_interval) as tfr:
         order = tfr.choose_shuffled_order(random_shuffle=random_shuffle)
 
         for idx in range(order.size):

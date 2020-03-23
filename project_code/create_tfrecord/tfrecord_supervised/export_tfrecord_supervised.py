@@ -7,16 +7,16 @@ from pathlib import Path
 import PIL
 import numpy as np
 
-from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporter
+from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporterSupervised
 from project_code.create_tfrecord.export_tfrecord_util import fn_extract_300W_LP_labels, load_image_from_file
 
 
 def create_tfrecord(tfrecord_dir, image_filenames, image_size, process_label_fn, print_progress, progress_interval,
                     resolution=224, label_size=430, random_shuffle=True):
-    with TFRecordExporter(tfrecord_dir=tfrecord_dir,
-                          expected_images=len(image_filenames),
-                          print_progress=print_progress,
-                          progress_interval=progress_interval) as tfr:
+    with TFRecordExporterSupervised(tfrecord_dir=tfrecord_dir,
+                                    expected_images=len(image_filenames),
+                                    print_progress=print_progress,
+                                    progress_interval=progress_interval) as tfr:
         order = tfr.choose_shuffled_order(random_shuffle=random_shuffle)
         labels = np.zeros((len(image_filenames), label_size), np.float32)
         for idx in range(order.size):
