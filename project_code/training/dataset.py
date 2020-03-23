@@ -48,7 +48,8 @@ def parse_tfrecord_np_unsupervised(record):
 # Dataset class that loads data from tfrecords files
 class TFRecordDataset(ABC):
     def __init__(self,
-                 tfrecord_dir,  # Directory containing a collection of tfrecords files.
+                 _sentinel=None,
+                 tfrecord_dir=None,  # Directory containing a collection of tfrecords files.
                  resolution=None,  # Dataset resolution, None = autodetect.
                  repeat=True,  # Repeat dataset indefinitely.
                  batch_size=64,  # batch size
@@ -59,6 +60,10 @@ class TFRecordDataset(ABC):
                  num_gpu=1, # Number of gpu
                  strategy=None # distributing strategy
                  ):  # Data distribution for multi gpu
+
+        if _sentinel is not None:
+            raise ValueError('Initialize `TFRecordDataset` with only named arguments')
+
         self.tfrecord_dir = tfrecord_dir
         self.resolution = resolution
         self.shape = []  # [height, width, channel]
@@ -96,7 +101,10 @@ class TFRecordDataset(ABC):
 
 
 class TFRecordDatasetSupervised(TFRecordDataset):
-    def __init__(self, label_file=None, **kwargs):
+    def __init__(self, _sentinel=None, label_file=None, **kwargs):
+        if _sentinel is not None:
+            raise ValueError('Initialize `TFRecordDatasetSupervised` with Only named arguments')
+
         self.label_file = label_file
         self.label_size = None
         self.label_dtype = None
@@ -161,15 +169,16 @@ class TFRecordDatasetUnsupervised(TFRecordDataset):
         tfr_opt = tf.io.TFRecordOptions('')
         tfr_shape = []
         for record in tf.compat.v1.io.tf_record_iterator(tfr_file, tfr_opt):
-            tfr_shape.append(parse_tfrecord_np_supervised(record).shape)
+            tmp_image, _ = parse_tfrecord_np_unsupervised(record)
+            tfr_shape.append(tf.shape(tmp_image))
             break
 
         with tf.name_scope('Dataset'), tf.device('/cpu:0'):
 
             dset = tf.data.TFRecordDataset(tfr_file, compression_type='', buffer_size=self.buffer_mb << 20)
-            dset = dset.map(parse_tfrecord_tf_supervised, num_parallel_calls=self.num_threads)
+            dset = dset.map(parse_tfrecord_tf_unsupervised, num_parallel_calls=self.num_threads)
 
-            bytes_per_item = np.prod(tfr_shape) * np.dtype(self.dtype).itemsize
+            bytes_per_item = np.prod(tfr_shape) * 2 * np.dtype(self.dtype).itemsize
             if self.shuffle_mb > 0:
                 dset = dset.shuffle(((self.shuffle_mb << 20) - 1) // bytes_per_item + 1)
             if self.repeat:

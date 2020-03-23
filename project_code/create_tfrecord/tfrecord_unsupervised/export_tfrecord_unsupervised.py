@@ -5,15 +5,15 @@ import sys
 from pathlib import Path
 
 from project_code.create_tfrecord.export_tfrecord_util import load_image_from_file
-from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporterSupervised
+from project_code.create_tfrecord.tfrecord_exporter import TFRecordExporterUnsupervised
 
 
 def create_tfrecord(tfrecord_dir, image_filenames, mask_filenames, image_size, print_progress, progress_interval,
-                    resolution=224, random_shuffle=True):
-    with TFRecordExporterSupervised(tfrecord_dir=tfrecord_dir,
-                                    expected_images=len(image_filenames),
-                                    print_progress=print_progress,
-                                    progress_interval=progress_interval) as tfr:
+                    resolution=256, random_shuffle=True):
+    with TFRecordExporterUnsupervised(tfrecord_dir=tfrecord_dir,
+                                      expected_images=len(image_filenames),
+                                      print_progress=print_progress,
+                                      progress_interval=progress_interval) as tfr:
         order = tfr.choose_shuffled_order(random_shuffle=random_shuffle)
 
         for idx in range(order.size):
@@ -24,9 +24,7 @@ def create_tfrecord(tfrecord_dir, image_filenames, mask_filenames, image_size, p
                 # load mask
                 mask = load_image_from_file(img_file=mask_filenames[order[idx]], image_size=image_size,
                                             resolution=resolution, image_format='RGB')
-                # create masked image
-                img[mask == 0] = 0
-                tfr.add_image(img)
+                tfr.add_image(img, mask)
             except:
                 print(sys.exc_info()[1])
                 continue
@@ -48,16 +46,18 @@ def create_dataset(tfrecord_dir, data_dir, expected_images, print_progress, prog
         glob_pattern = os.path.join(image_folder, '*png')
         image_files = glob.glob(glob_pattern)
         if len(image_files) != expected_images[dn]:
-            raise Exception('Expected to find %d images in \'%s\', only found %d' % (expected_images[dn], image_folder, len(image_files)))
+            raise Exception('Expected to find %d images in \'%s\', only found %d' % (
+            expected_images[dn], image_folder, len(image_files)))
         print('find %d images' % len(image_files))
         image_filenames.extend(image_files)
 
         # get mask
         mask_folder = os.path.join(mask_parent_folder, dn)
-        mask_names = [img_file.split('/')[-1] for img_file in image_filenames]
+        mask_names = [img_file.split('/')[-1] for img_file in image_files]
         mask_files = [os.path.join(mask_folder, mask_name) for mask_name in mask_names]
         if len(mask_files) != expected_images[dn]:
-            raise Exception('Expected to find %d images in \'%s\', only found %d' % (expected_images[dn], mask_folder, len(mask_files)))
+            raise Exception('Expected to find %d images in \'%s\', only found %d' % (
+            expected_images[dn], mask_folder, len(mask_files)))
         print('find %d masks ' % len(mask_files))
         mask_filenames.extend(mask_files)
 
@@ -136,4 +136,4 @@ if __name__ == '__main__':
 
     tfrecord_dir = Path('/opt/data/face-fuse/unsupervised')
     data_dir = Path('/opt/data')
-    main(is_aflw=True, is_300w_lp=False, tfrecord_dir=tfrecord_dir, data_dir=data_dir)
+    main(is_aflw=True, is_300w_lp=True, tfrecord_dir=tfrecord_dir, data_dir=data_dir)

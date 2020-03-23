@@ -9,19 +9,20 @@ def display(tfrecord_dir, num_images=5):
     print('Loading sdataset %s' % tfrecord_dir)
 
     batch_size = 4
-    dset = dataset.TFRecordDataset(
-        tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False, shuffle_mb=0)
+    dset = dataset.TFRecordDatasetUnsupervised(
+        tfrecord_dir=tfrecord_dir, batch_size=batch_size, repeat=False, shuffle_mb=0)
 
     idx = 0
     filename = '/opt/project/output/verify_dataset/unsupervised/20200322/image_batch_{0}_indx_{1}.jpg'
     while idx < num_images:
         try:
-            image_tensor = dset.get_minibatch_tf()
+            image, mask = dset.get_minibatch_tf()
         except tf.errors.OutOfRangeError:
             break
 
         for i in range(batch_size):
-            imageio.imsave(filename.format(idx, i), image_tensor[i].numpy().astype(np.uint8))
+            image_mask = np.concatenate((image[i].numpy().astype(np.uint8), mask[i].numpy().astype(np.uint8)), axis=0)
+            imageio.imsave(filename.format(idx, i), image_mask)
         idx += 1
 
     print('\nDisplayed %d images' % idx)

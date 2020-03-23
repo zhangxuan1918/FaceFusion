@@ -1,7 +1,7 @@
 import imageio
 import numpy as np
 import tensorflow as tf
-from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
@@ -12,8 +12,8 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
     print('Loading sdataset %s' % tfrecord_dir)
 
     batch_size = 4
-    dset = dataset.TFRecordDataset(
-        tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False, shuffle_mb=0)
+    dset = dataset.TFRecordDatasetSupervised(
+        tfrecord_dir=tfrecord_dir, batch_size=batch_size, repeat=False, shuffle_mb=0)
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,
@@ -70,7 +70,7 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             print(e)
 
-    tfrecord_dir = '/opt/data/face-fuse/train/'
+    tfrecord_dir = '/opt/data/face-fuse/supervised/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     image_size = 224
     num_images = 8
