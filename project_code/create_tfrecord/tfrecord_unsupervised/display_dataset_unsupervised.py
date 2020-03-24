@@ -20,7 +20,7 @@ def display(tfrecord_dir, num_images=5):
         except tf.errors.OutOfRangeError:
             break
 
-        immk = tf.where(mask == 1, image, 0)
+        immk = tf.where(mask == 255, image, 0)
         for i in range(batch_size):
             image_mask = np.concatenate((image[i].numpy().astype(np.uint8), immk[i].numpy().astype(np.uint8)), axis=0)
             imageio.imsave(filename.format(idx, i), image_mask)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             print(e)
 
-    tfrecord_dir = '/opt/data/face-fuse/unsupervised/test/'
+    tfrecord_dir = '/opt/data/face-fuse/unsupervised/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     image_size = 256
     num_images = 8

@@ -101,6 +101,7 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, print_progress=True, progr
             expected_images=expected_images,
             print_progress=print_progress,
             progress_interval=progress_interval,
+            resolution=256 # we will crop the image randomly
         )
     else:
         image_train_size = 0
@@ -115,7 +116,8 @@ def main(is_aflw, is_300w_lp, tfrecord_dir, data_dir, print_progress=True, progr
             data_dir=data_dir,
             expected_images=expected_images,
             print_progress=print_progress,
-            progress_interval=progress_interval
+            progress_interval=progress_interval,
+            resolution=224 # for testing, we don't crop, so we need to rescale the image here
         )
     else:
         image_test_size = 0
