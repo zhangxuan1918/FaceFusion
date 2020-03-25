@@ -34,9 +34,8 @@ def random_crop(images, masks, width, height):
     :param height: int
     :return:
     """
-
-    x = np.random.random_integers(0, tf.shape(images)[2] - width)
-    y = np.random.random_integers(0, tf.shape(images)[1] - height)
+    x = tf.random.uniform(shape=[], minval=0, maxval=tf.shape(images)[2] - width, dtype=tf.int32)
+    y = tf.random.uniform(shape=[], minval=0, maxval=tf.shape(images)[1] - height, dtype=tf.int32)
 
     images = tf.image.crop_to_bounding_box(
         image=images, offset_height=y, offset_width=x, target_height=height, target_width=width

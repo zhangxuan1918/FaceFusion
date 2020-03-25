@@ -48,5 +48,5 @@ if __name__ == '__main__':
         image_folder=image_folder,
         to_save=to_save,
         image_size=256,
-        resolution=224
+        resolution=256
     )
