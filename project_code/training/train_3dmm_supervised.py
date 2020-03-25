@@ -1,10 +1,12 @@
 import datetime
 import logging
+import os
 
 import tensorflow as tf
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
-from project_code.misc.image_utils import process_reals
+from project_code.misc.image_utils import process_reals_supervised
+from project_code.training.dataset import TFRecordDatasetSupervised
 from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
 
@@ -12,6 +14,33 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TrainFaceModelSupervised(TrainFaceModel):
+
+    def create_training_dataset(self):
+        if self.train_dir is None:
+            self.train_dir = os.path.join(self.data_dir, 'train')
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+
+        self.train_dataset = TFRecordDatasetSupervised(
+            tfrecord_dir=self.train_dir,
+            resolution=self.resolution,
+            repeat=True,
+            batch_size=self.train_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
+
+    def create_evaluating_dataset(self):
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+        self.eval_dataset = TFRecordDatasetSupervised(
+            tfrecord_dir=self.eval_dir,
+            resolution=self.resolution,
+            repeat=False,
+            batch_size=self.eval_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
 
     def init_optimizer(self):
         learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -120,10 +149,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
-        reals = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range,
-                              drange_net=self.drange_net)
+        _, reals = process_reals_supervised(x=reals, mirror_augment=False,
+                                            drange_data=self.train_dataset.dynamic_range,
+                                            drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
+
             loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.train_batch_size)
             loss = loss_pose + loss_geo + loss_lm + loss_shape
             if self.use_float16:
@@ -148,11 +179,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
 
         def _test_step_fn(inputs):
             reals, labels = inputs
-            reals = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
-                                  drange_net=self.drange_net)
+            reals = process_reals_supervised(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
+                                             drange_net=self.drange_net)
             model_outputs = self.model(reals, training=False)
 
             loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
+
             self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
             self.eval_loss_metrics['loss_lm'].update_state(loss_lm)
             self.eval_loss_metrics['loss_shape'].update_state(loss_shape)
@@ -181,7 +213,7 @@ if __name__ == '__main__':
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/supervised/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),  # model directory for saving trained model
-        epochs=10,  # number of epochs for training
+        epochs=3,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
@@ -191,7 +223,7 @@ if __name__ == '__main__':
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
-        stage='UNSUPERVISED',  # stage name
+        stage='SUPERVISED',  # stage name
         backbone='resnet50',  # model architecture
         distribute_strategy='one_device',  # distribution strategy when num_gpu > 1
         run_eagerly=False,

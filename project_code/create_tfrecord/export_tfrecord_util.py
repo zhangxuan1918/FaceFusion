@@ -1,6 +1,7 @@
 import scipy.io as sio
 import numpy as np
 import tensorflow as tf
+import PIL
 
 
 def fn_extract_300W_LP_labels(bfm_path, image_size, is_aflw_2000=False):
@@ -192,3 +193,22 @@ def fn_extract_coarse_80k(img_filename):
     # txt format
     # txt_filename =
     pass
+
+
+def load_image_from_file(img_file, image_size, resolution, image_format='RGB'):
+    """
+    load image from file,
+    if resolution != image_size, rescale image to resolution
+    :param img_file: image file path
+    :param image_size: original image size
+    :param resolution: target image size
+    :return:
+    """
+    # load image
+    img = np.asarray(PIL.Image.open(img_file))
+    assert img.shape == (image_size, image_size, 3)
+    img = PIL.Image.fromarray(img, image_format)
+    # resize image
+    if resolution != image_size:
+        img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
+    return np.array(img)

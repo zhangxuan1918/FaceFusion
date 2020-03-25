@@ -1,12 +1,10 @@
+import imageio
+import numpy as np
 import tensorflow as tf
-from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-import numpy as np
-import imageio
-
-from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_300W_LP_labels, split_300W_LP_labels, \
-    unnormalize_labels
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
 from project_code.training import dataset
 
 
@@ -14,9 +12,8 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
     print('Loading sdataset %s' % tfrecord_dir)
 
     batch_size = 4
-    dset = dataset.TFRecordDataset(
-        tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False, shuffle_mb=0)
-    strategy = tf.distribute.MirroredStrategy()
+    dset = dataset.TFRecordDatasetSupervised(
+        tfrecord_dir=tfrecord_dir, batch_size=batch_size, repeat=False, shuffle_mb=0)
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,
@@ -24,7 +21,7 @@ def display(tfrecord_dir, bfm_path, image_size, num_images=5, n_tex_para=40):
     )
 
     idx = 0
-    filename = '/opt/project/output/verify_dataset/20200222/image_batch_{0}_indx_{1}.jpg'
+    filename = '/opt/project/output/verify_dataset/supervised/20200222/image_batch_{0}_indx_{1}.jpg'
     # fn_unnormalize_labels = fn_unnormalize_300W_LP_labels(bfm_path=bfm_path, image_size=image_size, n_tex_para=n_tex_para)
     while idx < num_images:
         try:
@@ -73,7 +70,7 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             print(e)
 
-    tfrecord_dir = '/opt/data/face-fuse/train/'
+    tfrecord_dir = '/opt/data/face-fuse/supervised/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     image_size = 224
     num_images = 8

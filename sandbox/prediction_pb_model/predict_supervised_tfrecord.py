@@ -7,7 +7,7 @@ from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
-from project_code.misc.image_utils import process_reals
+from project_code.misc.image_utils import process_reals_supervised
 from project_code.training import dataset
 
 
@@ -15,10 +15,11 @@ def load_model(pd_model_path):
     return tf.keras.models.load_model(pd_model_path)
 
 
-def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_batches, batch_size, resolution, n_tex_para):
+def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_batches, batch_size, resolution,
+                           n_tex_para):
     strategy = tf.distribute.MirroredStrategy()
-    dset = dataset.TFRecordDataset(tfrecord_dir, batch_size=batch_size, max_label_size='full', repeat=False,
-                                   shuffle_mb=100, strategy=strategy)
+    dset = dataset.TFRecordDatasetSupervised(tfrecord_dir, batch_size=batch_size, repeat=False,
+                                             shuffle_mb=100, strategy=strategy)
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,
@@ -32,9 +33,9 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_b
     while idx < num_batches:
         try:
             reals, gt_params = dset.get_minibatch_tf()
-            reals_input = process_reals(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
-                                  drange_net=[-1, 1])
-            est_params = model(reals_input)
+            reals = process_reals_supervised(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
+                                             drange_net=[-1, 1])
+            est_params = model(reals)
         except tf.errors.OutOfRangeError:
             break
 
@@ -104,5 +105,6 @@ if __name__ == '__main__':
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(
-        tfrecord_dir, bfm_path, pd_model_path, save_rendered_to, num_batches, batch_size=4, resolution=image_size, n_tex_para=n_tex_para
+        tfrecord_dir, bfm_path, pd_model_path, save_rendered_to, num_batches, batch_size=4, resolution=image_size,
+        n_tex_para=n_tex_para
     )

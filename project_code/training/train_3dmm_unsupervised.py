@@ -4,9 +4,9 @@ import os
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, \
-    unnormalize_labels
-from project_code.misc.image_utils import process_reals
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
+from project_code.misc.image_utils import process_reals_unsupervised
+from project_code.training.dataset import TFRecordDatasetUnsupervised
 from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
 
@@ -14,6 +14,33 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TrainFaceModelUnsupervised(TrainFaceModel):
+
+    def create_training_dataset(self):
+        if self.train_dir is None:
+            self.train_dir = os.path.join(self.data_dir, 'train')
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+
+        self.train_dataset = TFRecordDatasetUnsupervised(
+            tfrecord_dir=self.train_dir,
+            resolution=self.resolution,
+            repeat=True,
+            batch_size=self.train_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
+
+    def create_evaluating_dataset(self):
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+        self.eval_dataset = TFRecordDatasetUnsupervised(
+            tfrecord_dir=self.eval_dir,
+            resolution=self.resolution,
+            repeat=True,
+            batch_size=self.eval_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
 
     def init_optimizer(self):
         learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -58,26 +85,18 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
     def init_metrics(self):
         # training loss metrics
         self.train_loss_metrics = {
-            # training loss metric for texture
-            'loss_geo': tf.keras.metrics.Mean('train_loss_geo', dtype=tf.float32),
-            # training loss metric for pose
-            'loss_pose': tf.keras.metrics.Mean('train_loss_pose', dtype=tf.float32),
+            # training loss metric
+            'loss': tf.keras.metrics.Mean('train_loss', dtype=tf.float32),
         }
 
         # evaluating loss metrics
         self.eval_loss_metrics = {
             # evaluating loss metric for texture
-            'loss_geo': tf.keras.metrics.Mean('eval_loss_geo', dtype=tf.float32),
-            # evaluating loss metric for landmarks
-            'loss_pose': tf.keras.metrics.Mean('eval_loss_pose', dtype=tf.float32),
+            'loss': tf.keras.metrics.Mean('eval_loss', dtype=tf.float32),
         }
 
-    def get_loss(self, gt_images, gt_params, est_params, batch_size):
+    def get_loss(self, gt_images, gt_mask, est_params, batch_size):
         # split params and unnormalize params
-        _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = split_300W_LP_labels(gt_params)
-
-        _, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = unnormalize_labels(
-            self.bfm, batch_size, self.resolution, None, gt_lm, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex)
 
         _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
 
@@ -86,8 +105,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             est_tex)
 
         # geo loss, render with estimated geo parameters and ground truth pose
-        est_geo_gt_pose_images = render_batch(
-            pose_param=gt_pp,
+        est_images = render_batch(
+            pose_param=est_pp,
             shape_param=est_shape,
             exp_param=est_exp,
             tex_param=est_tex,
@@ -98,36 +117,28 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
-        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_geo_gt_pose_images)))
 
-        # pose loss, render with estimated pose parameters and ground truth geo parameters
-        gt_geo_est_pose_images = render_batch(
-            pose_param=est_pp,
-            shape_param=gt_shape,
-            exp_param=gt_exp,
-            tex_param=gt_tex,
-            color_param=gt_color,
-            illum_param=gt_illum,
-            frame_width=self.resolution,
-            frame_height=self.resolution,
-            tf_bfm=self.bfm,
-            batch_size=batch_size
-        )
-        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_images - gt_geo_est_pose_images)))
+        gt_images = tf.where(gt_mask == 255, gt_images, 0)
+        est_images = tf.where(gt_mask == 255, est_images, 0)
 
-        return loss_geo / self.strategy.num_replicas_in_sync, loss_pose / self.strategy.num_replicas_in_sync
+        loss = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_images)))
+
+        return loss / self.strategy.num_replicas_in_sync
         # if loss_geo too big, make is smaller, so we balance the loss between geo and pose
         # coef = tf.Variable((loss_geo / (loss_pose + loss_geo)))
         # return ((1 - coef) * loss_geo + coef * loss_pose) / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
-        reals, labels = inputs
-        reals_input = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range,
-                                    drange_net=self.drange_net)
+        reals, masks = inputs
+        reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                               drange_data=self.train_dataset.dynamic_range,
+                                                               drange_net=self.drange_net,
+                                                               batch_size=self.train_batch_size,
+                                                               resolution=self.resolution)
+
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals_input, training=True)
-            loss_geo, loss_pose = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.train_batch_size)
-            loss = loss_geo + loss_pose
+            loss = self.get_loss(reals, masks, model_outputs, self.train_batch_size)
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -137,21 +148,24 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-        self.train_loss_metrics['loss_geo'].update_state(loss_geo)
-        self.train_loss_metrics['loss_pose'].update_state(loss_pose)
+        self.train_loss_metrics['loss'].update_state(loss)
 
     @tf.function
     def _test_step(self, iterator):
 
         def _test_step_fn(inputs):
-            reals, labels = inputs
-            reals_input = process_reals(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
-                                        drange_net=self.drange_net)
+            reals, masks = inputs
+
+            reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                                   drange_data=self.train_dataset.dynamic_range,
+                                                                   drange_net=self.drange_net,
+                                                                   batch_size=self.train_batch_size,
+                                                                   resolution=self.resolution)
+
             model_outputs = self.model(reals_input, training=False)
 
-            loss_geo, loss_pose = self.get_loss(tf.cast(reals, tf.float32), labels, model_outputs, self.eval_batch_size)
-            self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
-            self.eval_loss_metrics['loss_pose'].update_state(loss_pose)
+            loss = self.get_loss(reals, masks, model_outputs, self.eval_batch_size)
+            self.eval_loss_metrics['loss'].update_state(loss)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
@@ -170,17 +184,20 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             logging.error(e)
 
+    date_yyyymmdd = '20200322'
     train_model = TrainFaceModelUnsupervised(
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
-        data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/20200321/unsupervised/',  # model directory for saving trained model
+        data_dir='/opt/data/face-fuse/unsupervised/',  # data directory for training and evaluating
+        model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),
+        # model directory for saving trained model
         epochs=10,  # number of epochs for training
         train_batch_size=32,  # batch size for training
         eval_batch_size=32,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
-        init_checkpoint='/opt/data/face-fuse/model/20200321/supervised/',  # initial checkpoint to restore model if provided
+        init_checkpoint='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
+        # initial checkpoint to restore model if provided
         init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
@@ -189,7 +206,7 @@ if __name__ == '__main__':
         backbone='resnet50',  # model architecture
         # distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         distribute_strategy='one_device',
-        run_eagerly=True,
+        run_eagerly=False,
         model_output_size=290,  # number of face parameters, we remove region of interests, roi from the data
         enable_profiler=False
     )
