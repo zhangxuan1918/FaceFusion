@@ -220,7 +220,7 @@ class TrainFaceModel(ABC):
             evaluating_status = [
                 '%s Step: [%d] Validation ' % (self.stage, current_training_step)
             ]
-            for metric_name, metric in self.train_loss_metrics.items():
+            for metric_name, metric in self.eval_loss_metrics.items():
                 m_loss = float_metric_value(metric)
                 metric_status = '%s = %f' % (metric_name, m_loss)
                 evaluating_status.append(metric_status)
