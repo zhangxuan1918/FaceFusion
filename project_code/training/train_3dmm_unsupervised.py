@@ -192,8 +192,8 @@ if __name__ == '__main__':
         model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),
         # model directory for saving trained model
         epochs=10,  # number of epochs for training
-        train_batch_size=64,  # batch size for training
-        eval_batch_size=64,  # batch size for evaluating
+        train_batch_size=32,  # batch size for training
+        eval_batch_size=32,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
