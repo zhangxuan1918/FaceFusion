@@ -47,23 +47,25 @@ def random_crop(images, masks, width, height):
 
 
 def process_reals_unsupervised(images, masks, batch_size, mirror_augment, drange_data, drange_net, resolution=224,
-                               max_rotate_degree=30):
+                               max_rotate_degree=30, random_crop_augment=False, random_rotate_augment=False):
     images = tf.cast(images, tf.float32)
 
-    # random crop
-    with tf.name_scope('CropAugment'):
-        images, masks = random_crop(
-            images=images,
-            masks=masks,
-            width=resolution,
-            height=resolution
-        )
-    # random rotation
-    with tf.name_scope('RotationAugment'):
-        max_rad = max_rotate_degree * np.pi / 180.
-        angles = tf.random.uniform((tf.shape(images)[0],), maxval=max_rad, minval=-max_rad)
-        images = tfa.image.rotate(images, angles, interpolation='NEAREST')
-        masks = tfa.image.rotate(masks, angles, interpolation='NEAREST')
+    if random_crop_augment:
+        # random crop
+        with tf.name_scope('CropAugment'):
+            images, masks = random_crop(
+                images=images,
+                masks=masks,
+                width=resolution,
+                height=resolution
+            )
+    if random_rotate_augment:
+        # random rotation
+        with tf.name_scope('RotationAugment'):
+            max_rad = max_rotate_degree * np.pi / 180.
+            angles = tf.random.uniform((tf.shape(images)[0],), maxval=max_rad, minval=-max_rad)
+            images = tfa.image.rotate(images, angles, interpolation='NEAREST')
+            masks = tfa.image.rotate(masks, angles, interpolation='NEAREST')
 
     if mirror_augment:
         with tf.name_scope('MirrorAugment'):

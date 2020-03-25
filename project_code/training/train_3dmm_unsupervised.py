@@ -130,11 +130,15 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, masks = inputs
-        reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
-                                                               drange_data=self.train_dataset.dynamic_range,
-                                                               drange_net=self.drange_net,
-                                                               batch_size=self.train_batch_size,
-                                                               resolution=self.resolution)
+        reals_input, reals, masks = process_reals_unsupervised(
+            images=reals, masks=masks, mirror_augment=False,
+            drange_data=self.train_dataset.dynamic_range,
+            drange_net=self.drange_net,
+            batch_size=self.train_batch_size,
+            resolution=self.resolution,
+            random_crop_augment=True,
+            random_rotate_augment=True
+        )
 
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals_input, training=True)
