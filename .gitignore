@@ -4,3 +4,5 @@ __pycache__
 examples
 data
 /sandbox/prediction_pb_model/output/
+/sandbox/check_image_rotation/output/
+/sandbox/irrelevant/

@@ -7,7 +7,7 @@ from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord_supervised.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
-from project_code.misc.image_utils import process_reals
+from project_code.misc.image_utils import process_reals_unsupervised
 from project_code.training import dataset
 
 
@@ -32,8 +32,8 @@ def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_b
     while idx < num_batches:
         try:
             reals, gt_params = dset.get_minibatch_tf()
-            reals = process_reals(x=reals, mirror_augment=False, drange_data=dset.dynamic_range,
-                                  drange_net=[-1, 1])
+            reals = process_reals_unsupervised(images=reals, mirror_augment=False, drange_data=dset.dynamic_range,
+                                               drange_net=[-1, 1])
             est_params = model(reals)
         except tf.errors.OutOfRangeError:
             break

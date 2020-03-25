@@ -11,7 +11,6 @@ from project_code.misc import distribution_utils
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
 from project_code.models.resnet18 import Resnet18
 from project_code.models.resnet50 import Resnet50
-from project_code.training.dataset import TFRecordDataset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -61,7 +60,7 @@ class TrainFaceModel(ABC):
 
         self.steps_per_epoch = int(self.train_data_size / self.train_batch_size)
         self.total_training_steps = self.steps_per_epoch * self.epochs
-        self.eval_steps = int(math.ceil(self.eval_data_size / self.eval_batch_size))
+        self.eval_steps = int(math.floor(self.eval_data_size / self.eval_batch_size))
 
         logging.info('%s Epochs: %d' % (self.stage, self.epochs))
         logging.info('%s Training batch size: %d' % (self.stage, self.train_batch_size))
@@ -128,34 +127,13 @@ class TrainFaceModel(ABC):
         else:
             os.makedirs(self.model_dir)
 
+    @abstractmethod
     def create_training_dataset(self):
-        if self.train_dir is None:
-            self.train_dir = os.path.join(self.data_dir, 'train')
-        if self.eval_dir is None:
-            self.eval_dir = os.path.join(self.data_dir, 'test')
+        pass
 
-        self.train_dataset = TFRecordDataset(
-            tfrecord_dir=self.train_dir,
-            resolution=self.resolution,
-            max_label_size='full',
-            repeat=True,
-            batch_size=self.train_batch_size,
-            num_gpu=self.num_gpu,
-            strategy=self.strategy
-        )
-
+    @abstractmethod
     def create_evaluating_dataset(self):
-        if self.eval_dir is None:
-            self.eval_dir = os.path.join(self.data_dir, 'test')
-        self.eval_dataset = TFRecordDataset(
-            tfrecord_dir=self.eval_dir,
-            resolution=self.resolution,
-            max_label_size='full',
-            repeat=True,
-            batch_size=self.eval_batch_size,
-            num_gpu=self.num_gpu,
-            strategy=self.strategy
-        )
+        pass
 
     def _get_model(self):
         if self.backbone == 'resnet50':

@@ -4,9 +4,9 @@ import os
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
-from project_code.create_tfrecord_supervised.export_tfrecord_util import split_300W_LP_labels, \
-    unnormalize_labels
-from project_code.misc.image_utils import process_reals
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
+from project_code.misc.image_utils import process_reals_unsupervised
+from project_code.training.dataset import TFRecordDatasetUnsupervised
 from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
 
@@ -14,6 +14,33 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TrainFaceModelUnsupervised(TrainFaceModel):
+
+    def create_training_dataset(self):
+        if self.train_dir is None:
+            self.train_dir = os.path.join(self.data_dir, 'train')
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+
+        self.train_dataset = TFRecordDatasetUnsupervised(
+            tfrecord_dir=self.train_dir,
+            resolution=self.resolution,
+            repeat=True,
+            batch_size=self.train_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
+
+    def create_evaluating_dataset(self):
+        if self.eval_dir is None:
+            self.eval_dir = os.path.join(self.data_dir, 'test')
+        self.eval_dataset = TFRecordDatasetUnsupervised(
+            tfrecord_dir=self.eval_dir,
+            resolution=self.resolution,
+            repeat=True,
+            batch_size=self.eval_batch_size,
+            num_gpu=self.num_gpu,
+            strategy=self.strategy
+        )
 
     def init_optimizer(self):
         learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
@@ -91,8 +118,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
             batch_size=batch_size
         )
 
-        gt_images = tf.where(gt_mask == 1, gt_images, 0)
-        est_images = tf.where(gt_mask == 1, est_images, 0)
+        gt_images = tf.where(gt_mask == 255, gt_images, 0)
+        est_images = tf.where(gt_mask == 255, est_images, 0)
 
         loss = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_images)))
 
@@ -103,13 +130,13 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, masks = inputs
-        reals, reals_input = process_reals(x=reals, mirror_augment=False, drange_data=self.train_dataset.dynamic_range,
-                                           drange_net=self.drange_net, random_crop_augment=True, random_rotation_augment=True,
-                                           resolution=self.resolution)
+        reals_input, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                        drange_data=self.train_dataset.dynamic_range,
+                                                        drange_net=self.drange_net, batch_size=self.train_batch_size,
+                                                        resolution=self.resolution)
 
-        tf.debugging.assert_shapes([(reals_input, (self.train_batch_size, self.resolution, self.resolution))])
         with tf.GradientTape() as tape:
-            model_outputs = self.model(reals, training=True)
+            model_outputs = self.model(reals_input, training=True)
             loss = self.get_loss(reals, masks, model_outputs, self.train_batch_size)
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
@@ -128,10 +155,10 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         def _test_step_fn(inputs):
             reals, masks = inputs
 
-            reals, reals_input = process_reals(x=reals, mirror_augment=False,
-                                               drange_data=self.train_dataset.dynamic_range,
-                                               drange_net=self.drange_net, random_crop_augment=False,
-                                               random_rotation_augment=False, resolution=self.resolution)
+            reals_input, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                            drange_data=self.train_dataset.dynamic_range,
+                                                            drange_net=self.drange_net, batch_size=self.train_batch_size,
+                                                            resolution=self.resolution)
 
             model_outputs = self.model(reals_input, training=False)
 
@@ -155,17 +182,18 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             logging.error(e)
 
+    date_yyyymmdd = '20200322'
     train_model = TrainFaceModelUnsupervised(
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
-        data_dir='/opt/data/face-fuse/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/20200321/unsupervised/',  # model directory for saving trained model
+        data_dir='/opt/data/face-fuse/unsupervised/',  # data directory for training and evaluating
+        model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),  # model directory for saving trained model
         epochs=10,  # number of epochs for training
-        train_batch_size=32,  # batch size for training
-        eval_batch_size=32,  # batch size for evaluating
+        train_batch_size=64,  # batch size for training
+        eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
-        init_checkpoint='/opt/data/face-fuse/model/20200321/supervised/',
+        init_checkpoint='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # initial checkpoint to restore model if provided
         init_model_weight_path=None,
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
@@ -175,7 +203,7 @@ if __name__ == '__main__':
         backbone='resnet50',  # model architecture
         # distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         distribute_strategy='one_device',
-        run_eagerly=True,
+        run_eagerly=False,
         model_output_size=290,  # number of face parameters, we remove region of interests, roi from the data
         enable_profiler=False
     )
