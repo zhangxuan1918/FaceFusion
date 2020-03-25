@@ -25,23 +25,25 @@ def process_reals_supervised(x, mirror_augment, drange_data, drange_net):
     return x
 
 
-def random_crop(images, masks, width, height, batch_size):
+def random_crop(images, masks, width, height):
     """
-    random crop images and mask
+    random crop images and mask, the crop will be identical for all images in the batch
     :param images: [batch, height, width]
     :param masks: [batch, height, width]
     :param width: int
     :param height: int
     :return:
     """
-    assert tf.shape(images)[1] >= height
-    assert tf.shape(images)[1] >= width
-    assert tf.shape(images) == tf.shape(masks)
 
-    x = np.random.random_integers(0, tf.shape(images)[2] - width, size=batch_size)
-    y = np.random.random_integers(0, tf.shape(images)[1] - height, size=batch_size)
-    images = images[:, y:y + height, x:x + width]
-    masks = masks[:, y:y + height, x:x + width]
+    x = np.random.random_integers(0, tf.shape(images)[2] - width)
+    y = np.random.random_integers(0, tf.shape(images)[1] - height)
+
+    images = tf.image.crop_to_bounding_box(
+        image=images, offset_height=y, offset_width=x, target_height=height, target_width=width
+    )
+    masks = tf.image.crop_to_bounding_box(
+        image=masks, offset_height=y, offset_width=x, target_height=height, target_width=width
+    )
     return images, masks
 
 
@@ -55,13 +57,12 @@ def process_reals_unsupervised(images, masks, batch_size, mirror_augment, drange
             images=images,
             masks=masks,
             width=resolution,
-            height=resolution,
-            batch_size=batch_size
+            height=resolution
         )
     # random rotation
     with tf.name_scope('RotationAugment'):
-        rad = max_rotate_degree * np.pi / 180.
-        angles = tf.random.uniform((tf.shape(images)[0],), maxval=rad, minval=-rad)
+        max_rad = max_rotate_degree * np.pi / 180.
+        angles = tf.random.uniform((tf.shape(images)[0],), maxval=max_rad, minval=-max_rad)
         images = tfa.image.rotate(images, angles, interpolation='NEAREST')
         masks = tfa.image.rotate(masks, angles, interpolation='NEAREST')
 
@@ -70,9 +71,9 @@ def process_reals_unsupervised(images, masks, batch_size, mirror_augment, drange
             images = tf.image.flip_left_right(images)
             masks = tf.image.flip_left_right(masks)
 
-    images = adjust_dynamic_range(images, drange_data, drange_net)
+    images_adj = adjust_dynamic_range(images, drange_data, drange_net)
 
-    tf.debugging.assert_shapes([(images, (batch_size, resolution, resolution)),
-                                (masks, (batch_size, resolution, resolution))])
+    tf.debugging.assert_shapes([(images, (batch_size, resolution, resolution, 3)),
+                                (masks, (batch_size, resolution, resolution, 3))])
 
-    return images, masks
+    return images_adj, images, masks

@@ -130,10 +130,11 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, masks = inputs
-        reals_input, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
-                                                        drange_data=self.train_dataset.dynamic_range,
-                                                        drange_net=self.drange_net, batch_size=self.train_batch_size,
-                                                        resolution=self.resolution)
+        reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                               drange_data=self.train_dataset.dynamic_range,
+                                                               drange_net=self.drange_net,
+                                                               batch_size=self.train_batch_size,
+                                                               resolution=self.resolution)
 
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals_input, training=True)
@@ -155,10 +156,11 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         def _test_step_fn(inputs):
             reals, masks = inputs
 
-            reals_input, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
-                                                            drange_data=self.train_dataset.dynamic_range,
-                                                            drange_net=self.drange_net, batch_size=self.train_batch_size,
-                                                            resolution=self.resolution)
+            reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                                   drange_data=self.train_dataset.dynamic_range,
+                                                                   drange_net=self.drange_net,
+                                                                   batch_size=self.train_batch_size,
+                                                                   resolution=self.resolution)
 
             model_outputs = self.model(reals_input, training=False)
 
@@ -187,7 +189,8 @@ if __name__ == '__main__':
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/unsupervised/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),  # model directory for saving trained model
+        model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),
+        # model directory for saving trained model
         epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
