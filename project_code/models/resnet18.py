@@ -65,12 +65,12 @@ class Resnet18(tf.keras.Model):
         x = identity_block(x, 3, filters=512, stride=1, stage=5, block=2, trainable=True)
         return x
 
-    def get_config(self):
-        return self.__config
-
-    @classmethod
-    def from_config(cls, config, custom_objects=None):
-        return cls(**config)
+    # def get_config(self):
+    #     return self.__config
+    #
+    # @classmethod
+    # def from_config(cls, config, custom_objects=None):
+    #     return cls(**config)
 
 
 if __name__ == '__main__':

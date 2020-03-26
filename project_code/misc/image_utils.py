@@ -72,9 +72,9 @@ def process_reals_unsupervised(images, masks, batch_size, mirror_augment, drange
             images = tf.image.flip_left_right(images)
             masks = tf.image.flip_left_right(masks)
 
-    images_adj = adjust_dynamic_range(images, drange_data, drange_net)
+    images_rescale = adjust_dynamic_range(images, drange_data, drange_net)
 
     tf.debugging.assert_shapes([(images, (batch_size, resolution, resolution, 3)),
                                 (masks, (batch_size, resolution, resolution, 3))])
 
-    return images_adj, images, masks
+    return images, images_rescale, masks

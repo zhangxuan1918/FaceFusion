@@ -149,13 +149,14 @@ class TrainFaceModelSupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
-        _, reals = process_reals_supervised(x=reals, mirror_augment=False,
-                                            drange_data=self.train_dataset.dynamic_range,
-                                            drange_net=self.drange_net)
+        reals = process_reals_supervised(x=reals, mirror_augment=False,
+                                         drange_data=self.train_dataset.dynamic_range,
+                                         drange_net=self.drange_net)
         with tf.GradientTape() as tape:
             model_outputs = self.model(reals, training=True)
 
-            loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.train_batch_size)
+            loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs,
+                                                                     batch_size=self.train_batch_size)
             loss = loss_pose + loss_geo + loss_lm + loss_shape
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
@@ -183,7 +184,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
                                              drange_net=self.drange_net)
             model_outputs = self.model(reals, training=False)
 
-            loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs, batch_size=self.eval_batch_size)
+            loss_pose, loss_geo, loss_lm, loss_shape = self.get_loss(gt_params=labels, est_params=model_outputs,
+                                                                     batch_size=self.eval_batch_size)
 
             self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
             self.eval_loss_metrics['loss_lm'].update_state(loss_lm)
@@ -212,8 +214,9 @@ if __name__ == '__main__':
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/supervised/',  # data directory for training and evaluating
-        model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),  # model directory for saving trained model
-        epochs=3,  # number of epochs for training
+        model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
+        # model directory for saving trained model
+        epochs=10,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
         steps_per_loop=10,  # steps per loop, for efficiency
@@ -224,7 +227,7 @@ if __name__ == '__main__':
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
         stage='SUPERVISED',  # stage name
-        backbone='resnet50',  # model architecture
+        backbone='resnet18',  # model architecture
         distribute_strategy='one_device',  # distribution strategy when num_gpu > 1
         run_eagerly=False,
         model_output_size=290,

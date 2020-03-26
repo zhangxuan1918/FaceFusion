@@ -5,11 +5,12 @@ import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
-from project_code.misc.image_utils import process_reals_unsupervised
+from project_code.misc.image_utils import process_reals_unsupervised, adjust_dynamic_range
 from project_code.training.dataset import TFRecordDatasetUnsupervised
 from project_code.training.optimization import AdamWeightDecay
 from project_code.training.train_3dmm import TrainFaceModel
-
+import imageio
+import numpy as np
 logging.basicConfig(level=logging.INFO)
 
 
@@ -130,7 +131,7 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
     def _replicated_step(self, inputs):
         reals, masks = inputs
-        reals_input, reals, masks = process_reals_unsupervised(
+        reals, reals_input, masks = process_reals_unsupervised(
             images=reals, masks=masks, mirror_augment=False,
             drange_data=self.train_dataset.dynamic_range,
             drange_net=self.drange_net,
@@ -160,13 +161,13 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
         def _test_step_fn(inputs):
             reals, masks = inputs
 
-            reals_input, reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
-                                                                   drange_data=self.train_dataset.dynamic_range,
-                                                                   drange_net=self.drange_net,
-                                                                   batch_size=self.train_batch_size,
-                                                                   resolution=self.resolution)
+            reals, masks = process_reals_unsupervised(images=reals, masks=masks, mirror_augment=False,
+                                                      drange_data=self.train_dataset.dynamic_range,
+                                                      drange_net=self.drange_net,
+                                                      batch_size=self.train_batch_size,
+                                                      resolution=self.resolution)
 
-            model_outputs = self.model(reals_input, training=False)
+            model_outputs = self.model(reals, training=False)
 
             loss = self.get_loss(reals, masks, model_outputs, self.eval_batch_size)
             self.eval_loss_metrics['loss'].update_state(loss)
@@ -188,7 +189,14 @@ if __name__ == '__main__':
             # Memory growth must be set before GPUs have been initialized
             logging.error(e)
 
-    date_yyyymmdd = '20200322'
+    date_yyyymmdd = '20200326'
+    steps_per_loop = 1
+
+    if steps_per_loop == 1:
+        run_eagerly = True
+    else:
+        run_eagerly = False
+
     train_model = TrainFaceModelUnsupervised(
         bfm_dir='/opt/data/BFM/',
         n_tex_para=40,  # number of texture params used
@@ -198,7 +206,7 @@ if __name__ == '__main__':
         epochs=10,  # number of epochs for training
         train_batch_size=32,  # batch size for training
         eval_batch_size=32,  # batch size for evaluating
-        steps_per_loop=10,  # steps per loop, for efficiency
+        steps_per_loop=steps_per_loop,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # initial checkpoint to restore model if provided
@@ -207,10 +215,10 @@ if __name__ == '__main__':
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
         stage='UNSUPERVISED',  # stage name
-        backbone='resnet50',  # model architecture
+        backbone='resnet18',  # model architecture
         # distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
         distribute_strategy='one_device',
-        run_eagerly=False,
+        run_eagerly=run_eagerly,
         model_output_size=290,  # number of face parameters, we remove region of interests, roi from the data
         enable_profiler=False
     )

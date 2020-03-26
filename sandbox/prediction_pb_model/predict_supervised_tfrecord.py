@@ -17,8 +17,8 @@ def load_model(pd_model_path):
 
 def check_prediction_adhoc(tfrecord_dir, bfm_path, pd_model_path, save_to, num_batches, batch_size, resolution,
                            n_tex_para):
-    strategy = tf.distribute.MirroredStrategy()
-    dset = dataset.TFRecordDatasetSupervised(tfrecord_dir, batch_size=batch_size, repeat=False,
+    strategy = tf.distribute.OneDeviceStrategy('/gpu:0')
+    dset = dataset.TFRecordDatasetSupervised(tfrecord_dir=tfrecord_dir, batch_size=batch_size, repeat=False,
                                              shuffle_mb=100, strategy=strategy)
     print('Loading BFM model')
     bfm = TfMorphableModel(
@@ -98,10 +98,10 @@ if __name__ == '__main__':
 
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised/'
-    tfrecord_dir = '/opt/data/face-fuse/supervised/test/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised/300LP_W'
+    tfrecord_dir = '/opt/data/face-fuse/supervised/train/'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200322/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200326/supervised-exported/'
     image_size = 224
     num_batches = 8
     check_prediction_adhoc(
