@@ -222,7 +222,7 @@ if __name__ == '__main__':
         steps_per_loop=10,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint=None,  # initial checkpoint to restore model if provided
-        init_model_weight_path='/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
+        init_model_weight_path=None, #'/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus

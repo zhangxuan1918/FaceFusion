@@ -42,18 +42,13 @@ for mat_file in mat_paths:
     # roi_mean, roi_var = compute_mean_var(mat_contents['roi'], roi_mean, roi_var, counter)
     shape_para_mean, shape_para_var = compute_mean_var(mat_contents['Shape_Para'], shape_para_mean, shape_para_var, counter)
     pose_para = np.copy(mat_contents['Pose_Para'])
-    pose_para[0, 3:5] = pose_para[0, 3:5] * 224. / 450.
-    pose_para[0, 6] = pose_para[0, 6] * 224. / 450.
+    pose_para[0, 3:5] = pose_para[0, 3:5] / 450.
+    pose_para[0, 6] = pose_para[0, 6]
     pose_para_mean, pose_para_var = compute_mean_var(pose_para, pose_para_mean, pose_para_var, counter)
     exp_para_mean, exp_para_var = compute_mean_var(mat_contents['Exp_Para'], exp_para_mean, exp_para_var, counter)
     color_para_mean, color_para_var = compute_mean_var(mat_contents['Color_Para'][:, :6], color_para_mean, color_para_var, counter)
     illum_para_mean, illum_para_var = compute_mean_var(mat_contents['Illum_Para'][:, :9], illum_para_mean, illum_para_var, counter)
     tex_para_mean, tex_para_var = compute_mean_var(mat_contents['Tex_Para'][:40, :], tex_para_mean, tex_para_var, counter)
-
-    # print(pose_para)
-    all_pose.append(pose_para)
-    all_color.append(mat_contents['Color_Para'][:, :6])
-    all_illum.append(mat_contents['Illum_Para'][:, :9])
 
     if counter % 1000 == 0:
         print('counter= %d' % counter)
@@ -67,13 +62,13 @@ all_pose = np.array(all_pose)
 all_color = np.array(all_color)
 all_illum = np.array(all_illum)
 
-# replace 0 var to be 1
-shape_para_var[shape_para_var < 0.000001] = 1.
-# pose_para_var[pose_para_var < 0.000001] = 1.
-exp_para_var[exp_para_var < 0.000001] = 1.
-color_para_var[color_para_var < 0.000001] = 1.
-illum_para_var[illum_para_var < 0.000001] = 1.
-tex_para_var[tex_para_var < 0.000001] = 1.
+# # replace 0 var to be 1
+# shape_para_var[shape_para_var < 0.000001] = 1.
+# # pose_para_var[pose_para_var < 0.000001] = 1.
+# exp_para_var[exp_para_var < 0.000001] = 1.
+# color_para_var[color_para_var < 0.000001] = 1.
+# illum_para_var[illum_para_var < 0.000001] = 1.
+# tex_para_var[tex_para_var < 0.000001] = 1.
 
 print('min shape var %5f' % np.min(shape_para_var))
 print('min pose var %5f' % np.min(pose_para_var))
