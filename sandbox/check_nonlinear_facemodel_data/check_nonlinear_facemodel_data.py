@@ -1,12 +1,11 @@
+import imageio
 import numpy as np
 import scipy.io as sio
-from tf_3dmm.mesh.render import render
 import tensorflow as tf
-from morphable_model.model.morphable_model import FFTfMorphableModel
-from training.opt import save_images
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-filelist_name = '/opt/data2/300W_LP/filelist/IBUG_filelist.txt'
-fileparam_name = '/opt/data2/300W_LP/filelist/IBUG_param.dat'
+filelist_name = '/opt/data/nonlinear_face_3dmm/300W_LP/filelist/IBUG_filelist.txt'
+fileparam_name = '/opt/data/nonlinear_face_3dmm/300W_LP/filelist/IBUG_param.dat'
 
 filenames = []
 with open(filelist_name) as f:
@@ -20,6 +19,7 @@ shapeDim = poseDim + 199
 expDim = shapeDim + 29
 texDim = expDim + 40
 ilDim = texDim + 10
+colorDim = ilDim + 7
 
 with open(fileparam_name) as f:
     params = np.fromfile(file=f, dtype=np.float32)
@@ -32,6 +32,7 @@ shape = params[:, poseDim:shapeDim]
 exp = params[:, shapeDim:expDim]
 tex = params[:, expDim:texDim]
 il = params[:, texDim:ilDim]
+color = params[:,ilDim:colorDim]
 
 for i in range(len(filenames)):
     if filenames[i].strip() == 'IBUG/IBUG_image_008_1_0.png':
@@ -63,9 +64,13 @@ for i in range(len(filenames)):
         mat_data = sio.loadmat(mat_filename)
         co2 = mat_data['Color_Para']
 
-bfm = FFTfMorphableModel(param_mean_var_path='/opt/data/300W_LP_stats/stats_300W_LP.npz', model_path='/opt/data/BFM/BFM.mat')
+bfm_dir = '/opt/data/BFM/'
+bfm = TfMorphableModel(
+            model_path=bfm_dir,
+            n_tex_para=40
+        )
 
-image1 = render(
+images = render_batch(
     pose_param=tf.constant(pose1),
     shape_param=tf.constant(shape1),
     exp_param=tf.constant(exp1),
@@ -74,24 +79,8 @@ image1 = render(
     illum_param=tf.constant(il1),
     frame_height=256,
     frame_width=256,
-    tf_bfm=bfm
+    tf_bfm=bfm,
+    batch_size=1
 )
 
-image2 = render(
-    pose_param=tf.constant(pose2),
-    shape_param=tf.constant(shape2),
-    exp_param=tf.constant(exp2),
-    tex_param=tf.constant(tex2),
-    color_param=tf.constant(co2),
-    illum_param=tf.constant(il2),
-    frame_height=256,
-    frame_width=256,
-    tf_bfm=bfm
-)
-
-save_images(
-    images=[image1.numpy().astype(np.uint8), image2.numpy().astype(np.uint8)],
-    landmarks=None,
-    titles=['orignal1', 'original2'],
-    filename='./test_image.jpg'
-)
+imageio.imsave('./test.jpg', images)
