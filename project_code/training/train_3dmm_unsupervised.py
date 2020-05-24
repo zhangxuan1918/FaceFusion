@@ -101,8 +101,8 @@ class TrainFaceModelUnsupervised(TrainFaceModel):
 
         _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
 
-        _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = unnormalize_labels(
-            self.bfm, batch_size, self.resolution, None, est_lm, est_pp, est_shape, est_exp, est_color, est_illum,
+        _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = self.unnormalize_labels(
+            self.train_batch_size, None, est_lm, est_pp, est_shape, est_exp, est_color, est_illum,
             est_tex)
 
         # geo loss, render with estimated geo parameters and ground truth pose
@@ -199,6 +199,7 @@ if __name__ == '__main__':
 
     train_model = TrainFaceModelUnsupervised(
         bfm_dir='/opt/data/BFM/',
+        param_mean_std_path='/opt/data/face-fuse/stats_300W_LP.npz',
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/unsupervised/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/unsupervised/'.format(date_yyyymmdd),

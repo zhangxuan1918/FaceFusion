@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
+from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_300W_LP_labels
 from project_code.misc import distribution_utils
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
 from project_code.models.resnet18 import Resnet18
@@ -19,6 +20,7 @@ class TrainFaceModel(ABC):
 
     def __init__(self,
                  bfm_dir,
+                 param_mean_std_path,
                  data_dir,
                  # data directory for training and evaluating, /<data_dir>/train/, /<data_dir>/test/, /<data_dir>/meta.json
                  model_dir,  # model directory for saving trained model
@@ -118,6 +120,8 @@ class TrainFaceModel(ABC):
         self.n_tex_para = n_tex_para
         self.bfm = None
         self.enable_profiler = enable_profiler
+        self.param_mean_std_path = param_mean_std_path
+        self.unnormalize_labels = fn_unnormalize_300W_LP_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
 
     def setup_model_dir(self):
         # check if model directory exits, if so, raise error

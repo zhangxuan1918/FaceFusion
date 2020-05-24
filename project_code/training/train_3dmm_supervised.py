@@ -4,7 +4,7 @@ import os
 
 import tensorflow as tf
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels
 from project_code.misc.image_utils import process_reals_supervised
 from project_code.training.dataset import TFRecordDatasetSupervised
 from project_code.training.optimization import AdamWeightDecay
@@ -122,13 +122,12 @@ class TrainFaceModelSupervised(TrainFaceModel):
         # shape loss
         loss_shape = tf.sqrt(tf.reduce_mean(tf.square(gt_shape - est_shape)))
         loss_shape += tf.sqrt(tf.reduce_mean(tf.square(gt_exp - est_exp)))
-        # pose loss, 10 is chosen to make pose loss comparable to other loss
-        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_pp - est_pp))) * 10
+        # pose loss
+        loss_pose = tf.sqrt(tf.reduce_mean(tf.square(gt_pp - est_pp)))
 
         # shape related loss, we compute the difference between landmarks
-        _, _, est_pp, est_shape, est_exp, _, _, _ = unnormalize_labels(
-            self.bfm, batch_size, self.resolution, fake_roi, fake_lm, est_pp, est_shape, est_exp, est_color, est_illum,
-            est_tex)
+        _, _, est_pp, est_shape, est_exp, _, _, _ = self.unnormalize_labels(
+            self.train_batch_size, fake_roi, fake_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
 
         est_lm = self.bfm.get_landmarks(
             shape_param=est_shape,
@@ -212,15 +211,16 @@ if __name__ == '__main__':
     date_yyyymmdd = datetime.datetime.today().strftime('%Y%m%d')
     train_model = TrainFaceModelSupervised(
         bfm_dir='/opt/data/BFM/',
+        param_mean_std_path='/opt/data/face-fuse/stats_300W_LP.npz',
         n_tex_para=40,  # number of texture params used
         data_dir='/opt/data/face-fuse/supervised/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # model directory for saving trained model
         epochs=10,  # number of epochs for training
-        train_batch_size=64,  # batch size for training
-        eval_batch_size=64,  # batch size for evaluating
-        steps_per_loop=10,  # steps per loop, for efficiency
-        initial_lr=0.00005,  # initial learning rate
+        train_batch_size=128,  # batch size for training
+        eval_batch_size=128,  # batch size for evaluating
+        steps_per_loop=100,  # steps per loop, for efficiency
+        initial_lr=0.001,  # initial learning rate
         init_checkpoint=None,  # initial checkpoint to restore model if provided
         init_model_weight_path=None, #'/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
         # initial model weight to use if provided, if init_checkpoint is provided, this param will be ignored

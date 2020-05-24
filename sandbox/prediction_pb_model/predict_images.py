@@ -7,7 +7,7 @@ import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, unnormalize_labels
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, fn_unnormalize_300W_LP_labels
 from project_code.misc.image_utils import process_reals_unsupervised, process_reals_supervised
 
 
@@ -26,7 +26,7 @@ def load_images(image_folder, image_names, resolution):
         yield img
 
 
-def check_prediction_adhoc(bfm_path, pd_model_path, save_to, image_folder, image_names, batch_size, resolution,
+def check_prediction_adhoc(bfm_path, pd_model_path, param_mean_std_path, save_to, image_folder, image_names, batch_size, resolution,
                            n_tex_para):
     print('Loading BFM model')
     bfm = TfMorphableModel(
@@ -35,7 +35,8 @@ def check_prediction_adhoc(bfm_path, pd_model_path, save_to, image_folder, image
     )
     model = load_model(pd_model_path=pd_model_path)
     filename = os.path.join(save_to, 'image_batch_{0}_indx_{1}.jpg')
-
+    unnormalize_labels = fn_unnormalize_300W_LP_labels(param_mean_std_path=param_mean_std_path,
+                                                       image_size=resolution)
     images = []
     idx = 0
     for img in load_images(image_folder=image_folder, image_names=image_names, resolution=resolution):
@@ -49,7 +50,7 @@ def check_prediction_adhoc(bfm_path, pd_model_path, save_to, image_folder, image
             _, _, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
 
             _, est_lm, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = unnormalize_labels(
-                bfm, batch_size, resolution, None, None, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
+                batch_size, None, None, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
 
             est_image = render_batch(
                 pose_param=est_pp,
@@ -87,25 +88,26 @@ if __name__ == '__main__':
 
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
+    param_mean_std_path = '/opt/data/face-fuse/stats_300W_LP.npz'
     save_rendered_to = '/opt/project/output/adhoc_predict/supervised/ffhq'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200326/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200523/supervised-exported/'
     image_size = 224
 
-    image_folder = '/opt/project/input/images/ffhq/'
-    image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
-                   '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
-                   '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
-                   '38859.png', '48574.png', '58289.png']
+    # image_folder = '/opt/project/input/images/ffhq/'
+    # image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
+    #                '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
+    #                '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
+    #                '38859.png', '48574.png', '58289.png']
 
-    # image_folder = '/opt/data/300W_LP/AFW/'
-    # image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
-    #                'AFW_2805422179_3_1.jpg', 'AFW_4492032921_1_3.jpg', 'AFW_955659370_2_7.jpg',
-    #                'AFW_2805422179_3_2.jpg', 'AFW_4492032921_1_4.jpg', 'AFW_955659370_2_8.jpg',
-    #                'AFW_2805422179_3_3.jpg', 'AFW_4492032921_1_5.jpg', 'AFW_955659370_2_9.jpg',
-    #                'AFW_2805422179_3_4.jpg', 'AFW_4492032921_1_6.jpg']
+    image_folder = '/opt/data/300W_LP/AFW/'
+    image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
+                   'AFW_2805422179_3_1.jpg', 'AFW_4492032921_1_3.jpg', 'AFW_955659370_2_7.jpg',
+                   'AFW_2805422179_3_2.jpg', 'AFW_4492032921_1_4.jpg', 'AFW_955659370_2_8.jpg',
+                   'AFW_2805422179_3_3.jpg', 'AFW_4492032921_1_5.jpg', 'AFW_955659370_2_9.jpg',
+                   'AFW_2805422179_3_4.jpg', 'AFW_4492032921_1_6.jpg']
 
     check_prediction_adhoc(
-        bfm_path, pd_model_path, save_rendered_to, image_folder=image_folder,
+        bfm_path, pd_model_path, param_mean_std_path, save_rendered_to, image_folder=image_folder,
         image_names=image_names, batch_size=4, resolution=image_size, n_tex_para=n_tex_para
     )
