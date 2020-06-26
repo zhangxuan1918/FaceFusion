@@ -89,23 +89,24 @@ if __name__ == '__main__':
     n_tex_para = 40
     tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
     param_mean_std_path = '/opt/data/face-fuse/stats_300W_LP.npz'
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised/ffhq'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised/300LP_W'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200523/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200525/supervised-exported/'
     image_size = 224
 
-    # image_folder = '/opt/project/input/images/ffhq/'
-    # image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
-    #                '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
-    #                '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
-    #                '38859.png', '48574.png', '58289.png']
+    image_folder = '/opt/project/input/images/ffhq/'
+    image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
+                   '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
+                   '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
+                   '38859.png', '48574.png', '58289.png']
 
-    image_folder = '/opt/data/300W_LP/AFW/'
-    image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
-                   'AFW_2805422179_3_1.jpg', 'AFW_4492032921_1_3.jpg', 'AFW_955659370_2_7.jpg',
-                   'AFW_2805422179_3_2.jpg', 'AFW_4492032921_1_4.jpg', 'AFW_955659370_2_8.jpg',
-                   'AFW_2805422179_3_3.jpg', 'AFW_4492032921_1_5.jpg', 'AFW_955659370_2_9.jpg',
-                   'AFW_2805422179_3_4.jpg', 'AFW_4492032921_1_6.jpg']
+
+    # image_folder = '/opt/data/300W_LP/AFW/'
+    # image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
+    #                'AFW_2805422179_3_1.jpg', 'AFW_4492032921_1_3.jpg', 'AFW_955659370_2_7.jpg',
+    #                'AFW_2805422179_3_2.jpg', 'AFW_4492032921_1_4.jpg', 'AFW_955659370_2_8.jpg',
+    #                'AFW_2805422179_3_3.jpg', 'AFW_4492032921_1_5.jpg', 'AFW_955659370_2_9.jpg',
+    #                'AFW_2805422179_3_4.jpg', 'AFW_4492032921_1_6.jpg']
 
     check_prediction_adhoc(
         bfm_path, pd_model_path, param_mean_std_path, save_rendered_to, image_folder=image_folder,

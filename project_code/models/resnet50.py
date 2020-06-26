@@ -35,7 +35,7 @@ class Resnet50(tf.keras.Model):
         bn_axis = 3
         # inputs are of size 224 x 224 x 3
         x = Conv2D(64, (7, 7), strides=(2, 2),
-                   kernel_initializer='orthogonal',
+                   kernel_initializer=tf.initializers.glorot_normal(),
                    use_bias=False,
                    trainable=True,
                    kernel_regularizer=l2(WEIGHT_DECAY),
