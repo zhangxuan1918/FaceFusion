@@ -5,7 +5,7 @@ import os
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels
+from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, split_80k_labels
 from project_code.misc.image_utils import process_reals_supervised
 from project_code.training.dataset import TFRecordDatasetSupervised
 from project_code.training.optimization import AdamWeightDecay
@@ -84,60 +84,51 @@ class TrainFaceModelSupervised(TrainFaceModel):
     def init_metrics(self):
         # training loss metrics
         self.train_loss_metrics = {
-            # training loss metric for texture
-            'loss_geo': tf.keras.metrics.Mean('train_loss_geo', dtype=tf.float32),
-            # training loss metric for shape, exp and parameters
-            'loss_shape': tf.keras.metrics.Mean('train_loss_shape', dtype=tf.float32),
-            # training loss for params
-            'loss_param': tf.keras.metrics.Mean('train_loss_param', dtype=tf.float32)
+            # training loss metric for images
+            'loss_img': tf.keras.metrics.Mean('train_loss_img', dtype=tf.float32),
+            # training loss metric for landmarks
+            'loss_lms': tf.keras.metrics.Mean('train_loss_lms', dtype=tf.float32),
+            # training loss metric for landmarks
+            'loss_reg': tf.keras.metrics.Mean('train_loss_reg', dtype=tf.float32),
         }
 
         # evaluating loss metrics
         self.eval_loss_metrics = {
-            # evaluating loss metric for texture
-            'loss_geo': tf.keras.metrics.Mean('eval_loss_geo', dtype=tf.float32),
-            # evaluating loss metric for shape, exp and pose parameters
-            'loss_shape': tf.keras.metrics.Mean('eval_loss_shape', dtype=tf.float32),
-            # evaluating loss for params
-            'loss_param': tf.keras.metrics.Mean('eval_loss_param', dtype=tf.float32)
+            # evaluating loss metric for images
+            'loss_img': tf.keras.metrics.Mean('eval_loss_img', dtype=tf.float32),
+            # evaluating loss metric for landmarks
+            'loss_lms': tf.keras.metrics.Mean('eval_loss_lms', dtype=tf.float32),
         }
 
-    def get_loss(self, gt_params, est_params, batch_size):
+    def get_loss(self, gt_params, gt_images, est_params, batch_size):
         # gt contains roi, landmarks and all face parameters
         # est only contains face parameters
         # split params and unnormalize params
 
-        _, _, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = split_300W_LP_labels(gt_params)
+        gt_pp, gt_shape, gt_exp, _, _, _ = split_80k_labels(gt_params)
+        gt_pp, gt_shape, gt_exp, _, _, _ = self.unnormalize_labels(
+            batch_size, gt_pp, gt_shape, gt_exp, None, None, None)
 
-        _, _, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_300W_LP_labels(est_params)
+        est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_80k_labels(est_params)
 
-        loss_param = tf.sqrt(tf.reduce_mean(tf.square(gt_color - est_color)))
-        loss_param += tf.sqrt(tf.reduce_mean(tf.square(gt_illum - est_illum)))
-        loss_param += tf.sqrt(tf.reduce_mean(tf.square(gt_tex - est_tex)))
-        loss_param += tf.sqrt(tf.reduce_mean(tf.square(gt_shape - est_shape)))
-        loss_param += tf.sqrt(tf.reduce_mean(tf.square(gt_exp - est_exp)))
-        loss_param += tf.sqrt(tf.reduce_mean(tf.square(gt_pp - est_pp))) * 10
+        # regularization loss
+        loss_reg = tf.sqrt(tf.reduce_mean(tf.square(est_pp)))
+        loss_reg += tf.sqrt(tf.reduce_mean(tf.square(est_shape)))
+        loss_reg += tf.sqrt(tf.reduce_mean(tf.square(est_exp)))
+        loss_reg += tf.sqrt(tf.reduce_mean(tf.square(est_color)))
+        loss_reg += tf.sqrt(tf.reduce_mean(tf.square(est_illum)))
+        loss_reg += tf.sqrt(tf.reduce_mean(tf.square(est_tex)))
 
-        _, _, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex = self.unnormalize_labels(
-            self.train_batch_size, None, None, gt_pp, gt_shape, gt_exp, gt_color, gt_illum, gt_tex)
-        _, _, est_pp, est_shape, est_exp, est_color, est_illum, est_tex = self.unnormalize_labels(
-            self.train_batch_size, None, None, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
+        est_pp, est_shape, est_exp, est_color, est_illum, est_tex = self.unnormalize_labels(
+            batch_size, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
 
-        # image rendered with ground truth params
-        gt_images = render_batch(
-            pose_param=gt_pp,
-            shape_param=gt_shape,
-            exp_param=gt_exp,
-            tex_param=gt_tex,
-            color_param=gt_color,
-            illum_param=gt_illum,
-            frame_width=self.resolution,
-            frame_height=self.resolution,
-            tf_bfm=self.bfm,
-            batch_size=batch_size
-        )
+        # add 0 to t3d z axis
+        # 80k dataset only have x, y translation
+        est_pp = tf.concat([est_pp[:, :-1], tf.constant(0.0, shape=(batch_size, 1), dtype=tf.float32), est_pp[:, -1:]], axis=1)
+        gt_pp = tf.concat([gt_pp[:, :-1], tf.constant(0.0, shape=(batch_size, 1), dtype=tf.float32), gt_pp[:, -1:]], axis=1)
+
         # image rendered with ground truth shape param, loss on texture/color
-        est_gt_shape = render_batch(
+        est_images = render_batch(
             pose_param=gt_pp,
             shape_param=gt_shape,
             exp_param=gt_exp,
@@ -149,40 +140,44 @@ class TrainFaceModelSupervised(TrainFaceModel):
             tf_bfm=self.bfm,
             batch_size=batch_size
         )
+        gt_images = tf.cast(tf.where(est_images > 0, gt_images, 0), tf.float32)
 
-        # image rendered with ground truth texture/color param, loss on pose/shape
-        est_gt_tex = render_batch(
-            pose_param=est_pp,
+        # landmark loss
+        est_lm = self.bfm.get_landmarks(
             shape_param=est_shape,
             exp_param=est_exp,
-            tex_param=gt_tex,
-            color_param=gt_color,
-            illum_param=gt_illum,
-            frame_width=self.resolution,
-            frame_height=self.resolution,
-            tf_bfm=self.bfm,
-            batch_size=batch_size
+            pose_param=est_pp,
+            batch_size=batch_size,
+            resolution=self.resolution,
+            is_2d=True,
+            is_plot=True
         )
 
-        # shape loss
-        loss_shape = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_gt_tex)))
+        gt_lm = self.bfm.get_landmarks(
+            shape_param=gt_shape,
+            exp_param=gt_exp,
+            pose_param=gt_pp,
+            batch_size=batch_size,
+            resolution=self.resolution,
+            is_2d=True,
+            is_plot=True
+        )
 
-        # texture/color loss
-        loss_geo = tf.sqrt(tf.reduce_mean(tf.square(gt_images - est_gt_shape)))
-
-        return loss_shape / self.strategy.num_replicas_in_sync, loss_geo / self.strategy.num_replicas_in_sync, loss_param / self.strategy.num_replicas_in_sync
+        loss_lms = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm)))
+        loss_img = tf.sqrt(tf.reduce_mean(tf.square(est_images - gt_images)))
+        return loss_img / self.strategy.num_replicas_in_sync, 5.0 * loss_lms / self.strategy.num_replicas_in_sync, loss_reg / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
-        reals = process_reals_supervised(x=reals, mirror_augment=False,
-                                         drange_data=self.train_dataset.dynamic_range,
-                                         drange_net=self.drange_net)
+        reals_input = process_reals_supervised(x=reals, mirror_augment=False,
+                                               drange_data=self.train_dataset.dynamic_range,
+                                               drange_net=self.drange_net)
         with tf.GradientTape() as tape:
-            model_outputs = self.model(reals, training=True)
+            model_outputs = self.model(reals_input, training=True)
 
-            loss_shape, loss_geo, loss_param = self.get_loss(gt_params=labels, est_params=model_outputs,
-                                                             batch_size=self.train_batch_size)
-            loss = 0.4 * loss_shape + 0.3 * loss_geo + 0.3 * loss_param
+            loss_img, loss_lms, loss_reg = self.get_loss(gt_params=labels, gt_images=reals, est_params=model_outputs,
+                                                         batch_size=self.train_batch_size)
+            loss = loss_img + loss_lms + loss_reg
             if self.use_float16:
                 scaled_loss = self.optimizer.get_scaled_loss(loss)
         if self.use_float16:
@@ -192,9 +187,9 @@ class TrainFaceModelSupervised(TrainFaceModel):
             grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
-        self.train_loss_metrics['loss_geo'].update_state(loss_geo)
-        self.train_loss_metrics['loss_shape'].update_state(loss_shape)
-        self.train_loss_metrics['loss_param'].update_state(loss_param)
+        self.train_loss_metrics['loss_img'].update_state(loss_img)
+        self.train_loss_metrics['loss_lms'].update_state(loss_lms)
+        self.train_loss_metrics['loss_reg'].update_state(loss_reg)
 
     def _train_single_step(self, iterator):
         self.strategy.experimental_run_v2(self._replicated_step, args=(next(iterator),))
@@ -204,16 +199,16 @@ class TrainFaceModelSupervised(TrainFaceModel):
 
         def _test_step_fn(inputs):
             reals, labels = inputs
-            reals = process_reals_supervised(x=reals, mirror_augment=False, drange_data=self.eval_dataset.dynamic_range,
-                                             drange_net=self.drange_net)
-            model_outputs = self.model(reals, training=False)
+            reals_input = process_reals_supervised(x=reals, mirror_augment=False,
+                                                   drange_data=self.eval_dataset.dynamic_range,
+                                                   drange_net=self.drange_net)
+            model_outputs = self.model(reals_input, training=False)
 
-            loss_shape, loss_geo, loss_param = self.get_loss(gt_params=labels, est_params=model_outputs,
-                                                             batch_size=self.train_batch_size)
+            loss_img, loss_lms, _ = self.get_loss(gt_params=labels, gt_images=reals, est_params=model_outputs,
+                                                  batch_size=self.train_batch_size)
 
-            self.eval_loss_metrics['loss_geo'].update_state(loss_geo)
-            self.eval_loss_metrics['loss_shape'].update_state(loss_shape)
-            self.eval_loss_metrics['loss_param'].update_state(loss_param)
+            self.eval_loss_metrics['loss_img'].update_state(loss_img)
+            self.eval_loss_metrics['loss_lms'].update_state(loss_lms)
 
         self.strategy.experimental_run_v2(_test_step_fn, args=(next(iterator),))
 
@@ -235,15 +230,16 @@ if __name__ == '__main__':
     date_yyyymmdd = datetime.datetime.today().strftime('%Y%m%d')
     train_model = TrainFaceModelSupervised(
         bfm_dir='/opt/data/BFM/',
-        param_mean_std_path='/opt/data/face-fuse/stats_300W_LP.npz',
+        exp_path='/opt/data/face-fuse/exp_80k.npz',
+        param_mean_std_path='/opt/data/face-fuse/stats_80k.npz',
         n_tex_para=40,  # number of texture params used
-        data_dir='/opt/data/face-fuse/supervised/',  # data directory for training and evaluating
+        n_shape_para=100, # number of shape params used
+        data_dir='/opt/data/face-fuse/supervised_80k/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # model directory for saving trained model
-        epochs=20,  # number of epochs for training
+        epochs=25,  # number of epochs for training
         train_batch_size=64,  # batch size for training
         eval_batch_size=64,  # batch size for evaluating
-        steps_per_loop=100,  # steps per loop, for efficiency
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint=None,  # initial checkpoint to restore model if provided
         init_model_weight_path=None,  # '/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
@@ -254,8 +250,10 @@ if __name__ == '__main__':
         backbone='resnet18',  # model architecture
         distribute_strategy='one_device',  # distribution strategy when num_gpu > 1
         run_eagerly=False,
-        model_output_size=290,
-        enable_profiler=False
+        steps_per_loop=100,  # steps per loop, for efficiency
+        model_output_size=240,
+        enable_profiler=False,
+        data_name='80K' # which dataset to use, 300W_LP or 80K
     )
 
     train_model.train()

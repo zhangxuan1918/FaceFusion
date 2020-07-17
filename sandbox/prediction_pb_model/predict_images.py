@@ -91,7 +91,7 @@ if __name__ == '__main__':
     param_mean_std_path = '/opt/data/face-fuse/stats_300W_LP.npz'
     save_rendered_to = '/opt/project/output/adhoc_predict/supervised/300LP_W'
     bfm_path = '/opt/data/BFM/BFM.mat'
-    pd_model_path = '/opt/data/face-fuse/model/20200525/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200629/supervised-exported/'
     image_size = 224
 
     image_folder = '/opt/project/input/images/ffhq/'

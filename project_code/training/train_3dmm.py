@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 import tensorflow as tf
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_300W_LP_labels
+from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_300W_LP_labels, fn_unnormalize_80k_labels
 from project_code.misc import distribution_utils
 from project_code.misc.train_utils import float_metric_value, steps_to_run, save_checkpoint, write_txt_summary
 from project_code.models.resnet18 import Resnet18
@@ -39,9 +39,12 @@ class TrainFaceModel(ABC):
                  distribute_strategy='mirror',  # distribution strategy when num_gpu > 1
                  run_eagerly=True,
                  n_tex_para=40, # number of texture parameters to use
+                 n_shape_para=199, # number of shape parameters
                  model_output_size=290,  # model output size, total number of face parameters
                  drange_net=[-1, 1],  # dynamic range for input images,
-                 enable_profiler=False # whether enable profiling server running
+                 enable_profiler=False, # whether enable profiling server running
+                 exp_path=None, # additional expresion path
+                 data_name='300W_LP'
                  ):
         # load meta data
         with open(os.path.join(data_dir, 'meta.json'), 'r') as f:
@@ -117,11 +120,17 @@ class TrainFaceModel(ABC):
         logging.info('Run eagerly: %s' % self.run_eagerly)
 
         self.bfm_dir = bfm_dir
+        self.exp_path = exp_path
         self.n_tex_para = n_tex_para
+        self.n_shape_para = n_shape_para
         self.bfm = None
         self.enable_profiler = enable_profiler
         self.param_mean_std_path = param_mean_std_path
-        self.unnormalize_labels = fn_unnormalize_300W_LP_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
+
+        if data_name == '300W_LP':
+            self.unnormalize_labels = fn_unnormalize_300W_LP_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
+        elif data_name == '80K':
+            self.unnormalize_labels = fn_unnormalize_80k_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
 
     def setup_model_dir(self):
         # check if model directory exits, if so, raise error
@@ -151,7 +160,9 @@ class TrainFaceModel(ABC):
         bfm_path = os.path.join(self.bfm_dir, 'BFM.mat')
         self.bfm = TfMorphableModel(
             model_path=bfm_path,
-            n_tex_para=self.n_tex_para
+            exp_path=self.exp_path,
+            n_tex_para=self.n_tex_para,
+            n_shape_para=self.n_shape_para
         )
 
     @abstractmethod

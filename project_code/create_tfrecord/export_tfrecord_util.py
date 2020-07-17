@@ -1,3 +1,4 @@
+import os
 import sys
 
 import scipy.io as sio
@@ -217,11 +218,156 @@ def fn_unnormalize_300W_LP_labels(param_mean_std_path, image_size):
 #     return roi, landmarks, pose_para_new, shape_para, exp_para, color_para, illum_para, tex_para
 
 
-def fn_extract_coarse_80k(img_filename):
+def fn_extract_80k_labels(param_mean_std_path, image_size):
     # label file has the same name as image
     # txt format
     # txt_filename =
-    pass
+    # Load label mean and std
+    param_mean_std = np.load(param_mean_std_path)
+
+    shape_avg = param_mean_std['Shape_Para_mean']
+    shape_std = param_mean_std['Shape_Para_std'] + 0.000000000000000001
+    pose_avg = param_mean_std['Pose_Para_mean']
+    pose_std = param_mean_std['Pose_Para_std'] + 0.000000000000000001
+    exp_avg = param_mean_std['Exp_Para_mean']
+    exp_std = param_mean_std['Exp_Para_std'] + 0.000000000000000001
+
+    image_size = 1.0 * image_size
+
+    def get_labels(img_filename):
+        # label file has the same name as image
+        # text format
+        # Shape_Para: shape=(100)
+        # Pose_Para: shape=(6)
+        # Exp_Para: shape=(79)
+        # Total: 185 params
+
+        label_filename = os.path.splitext(img_filename)[0]+'.txt'
+        with open(os.path.join(label_filename), 'r') as f:
+            # read shape parameters
+            row = f.readline()
+            shape_para = np.asarray([float(v.strip()) for v in row.split()])
+            # read expression parameters
+            row = f.readline()
+            exp_para = np.asarray([float(v.strip()) for v in row.split()])
+            # read pose parameters
+            row = f.readline()
+            pose_para = np.asarray([float(v.strip()) for v in row.split()])
+
+        # normalize pose param
+        pose_para[3:] /= image_size
+        pose_para = (pose_para - pose_avg) / pose_std
+
+        # rescale shape, exp
+        shape_para = (shape_para - shape_avg) / shape_std
+        exp_para = (exp_para - exp_avg) / exp_std
+
+        return np.concatenate((pose_para, shape_para, exp_para), axis=None)
+
+    return get_labels
+
+
+def split_80k_labels(labels):
+    # training data
+    # Pose_Para: shape=(None, 6)
+    # Shape_Para: shape=(None, 100)
+    # Exp_Para: shape=(None, 79)
+    # Total: 185 params
+
+    # network output
+    # Pose_Para: shape=(None, 6)
+    # Shape_Para: shape=(None, 100)
+    # Exp_Para: shape=(None, 79)
+    # Color_Para: shape=(None, 6)
+    # Illum_Para: shape=(None, 9)
+    # Tex_Para: shape=(None, 40)
+    # Total: 240 params
+    """
+
+    :param labels:
+    :return:
+
+    # training data
+    Shape_Para: shape=(None, 100)
+    Pose_Para: shape=(None, 6)
+    Exp_Para: shape=(None, 79)
+
+    # network output
+    Pose_Para: shape=(None, 6)
+    Shape_Para: shape=(None, 100)
+    Exp_Para: shape=(None, 79)
+    Color_Para: shape=(None, 6)
+    Illum_Para: shape=(None, 9)
+    Tex_Para: shape=(None, 40)
+    """
+    assert isinstance(labels, tf.Tensor)
+    if labels.shape[1] == 185:
+        # without roi
+        # with landmarks
+        pose_para, shape_para, exp_para = tf.split(labels, num_or_size_splits=[6, 100, 79], axis=1)
+        return pose_para, shape_para, exp_para, None, None, None
+    elif labels.shape[1] == 240:
+        # without roi
+        # with landmarks
+        pose_para, shape_para, exp_para, color_para, illum_para, tex_para = tf.split(labels, num_or_size_splits=[6, 100, 79, 6, 9, 40], axis=1)
+        return pose_para, shape_para, exp_para, color_para, illum_para, tex_para
+    else:
+        raise Exception('`labels` shape[1] is wrong')
+
+
+def fn_unnormalize_80k_labels(param_mean_std_path, image_size):
+    # Load label mean and std
+    param_mean_std = np.load(param_mean_std_path)
+
+    shape_avg = tf.constant(np.expand_dims(param_mean_std['Shape_Para_mean'], axis=0), dtype=tf.float32)
+    shape_std = tf.constant(np.expand_dims(param_mean_std['Shape_Para_std'], axis=0) + 0.00000000000000001, dtype=tf.float32)
+
+    pose_avg = tf.constant(np.expand_dims(param_mean_std['Pose_Para_mean'], axis=0), dtype=tf.float32)
+    pose_std = tf.constant(np.expand_dims(param_mean_std['Pose_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    exp_avg = tf.constant(np.expand_dims(param_mean_std['Exp_Para_mean'], axis=0), dtype=tf.float32)
+    exp_std = tf.constant(np.expand_dims(param_mean_std['Exp_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    color_avg = tf.constant(np.expand_dims(param_mean_std['Color_Para_mean'], axis=0), dtype=tf.float32)
+    color_std = tf.constant(np.expand_dims(param_mean_std['Color_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+    illum_avg = tf.constant(np.expand_dims(param_mean_std['Illum_Para_mean'], axis=0), dtype=tf.float32)
+    illum_std = tf.constant(np.expand_dims(param_mean_std['Illum_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    tex_avg = tf.constant(np.expand_dims(param_mean_std['Tex_Para_mean'], axis=0), dtype=tf.float32)
+    tex_std = tf.constant(np.expand_dims(param_mean_std['Tex_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    image_size = 1.0 * image_size
+    del param_mean_std
+
+    def unnormalize_labels(batch_size, pose_para, shape_para, exp_para, color_para, illum_para, tex_para):
+        # Shape_Para: shape=(None, 100)
+        # Pose_Para: shape=(None, 6)
+        # Exp_Para: shape=(None, 79)
+        # Color_Para: shape=(None, 6)
+        # Illum_Para: shape=(None, 9)
+        # Tex_Para: shape=(None, 40)
+
+        # unnormalize pose param
+        pose_para = pose_para * pose_std + pose_avg
+        pose_para_new = tf.concat([pose_para[:, 0:3], pose_para[:, 3:] * image_size], axis=1)
+
+        # unnormalize shape, exp and tex
+        shape_para = shape_para * shape_std + shape_avg
+        exp_para = exp_para * exp_std + exp_avg
+
+        if tex_para is not None:
+            tex_para = tex_para * tex_std + tex_avg
+
+        # Color_Para: add last value as it's always 1
+        # Illum_Para: add last value as it's always 20
+        if illum_para is not None:
+            illum_para = tf.concat([illum_para * illum_std + illum_avg, tf.constant(20.0, shape=(batch_size, 1), dtype=tf.float32)], axis=1)
+        if color_para is not None:
+            color_para = tf.concat([color_para * color_std + color_avg, tf.constant(1.0, shape=(batch_size, 1), dtype=tf.float32)], axis=1)
+
+        return pose_para_new, shape_para, exp_para, color_para, illum_para, tex_para
+
+    return unnormalize_labels
 
 
 def load_image_from_file(img_file, image_size, resolution, image_format='RGB'):
