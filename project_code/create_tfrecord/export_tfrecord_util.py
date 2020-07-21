@@ -370,6 +370,70 @@ def fn_unnormalize_80k_labels(param_mean_std_path, image_size):
     return unnormalize_labels
 
 
+def fn_extract_ffhq_labels(image_size, txt_suffix):
+
+    def get_labels(img_filename):
+        # label file has the same name as image
+        # text format
+        # landmark: (2, 64) ==> (136, )
+        # Total: 136 params
+
+        label_filename = os.path.splitext(img_filename)[0] + txt_suffix
+        lmks = np.loadtxt(label_filename)
+        lmks = 1.0 * lmks.reshape((136, )) / image_size
+        return lmks
+
+    return get_labels
+
+
+def fn_unnormalize_ffhq_labels(param_mean_std_path, image_size):
+    # Load label mean and std
+    param_mean_std = np.load(param_mean_std_path)
+
+    shape_avg = tf.constant(np.expand_dims(param_mean_std['Shape_Para_mean'], axis=0), dtype=tf.float32)
+    shape_std = tf.constant(np.expand_dims(param_mean_std['Shape_Para_std'], axis=0) + 0.00000000000000001, dtype=tf.float32)
+
+    pose_avg = tf.constant(np.expand_dims(param_mean_std['Pose_Para_mean'], axis=0), dtype=tf.float32)
+    pose_std = tf.constant(np.expand_dims(param_mean_std['Pose_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    exp_avg = tf.constant(np.expand_dims(param_mean_std['Exp_Para_mean'], axis=0), dtype=tf.float32)
+    exp_std = tf.constant(np.expand_dims(param_mean_std['Exp_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    color_avg = tf.constant(np.expand_dims(param_mean_std['Color_Para_mean'], axis=0), dtype=tf.float32)
+    color_std = tf.constant(np.expand_dims(param_mean_std['Color_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+    illum_avg = tf.constant(np.expand_dims(param_mean_std['Illum_Para_mean'], axis=0), dtype=tf.float32)
+    illum_std = tf.constant(np.expand_dims(param_mean_std['Illum_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    tex_avg = tf.constant(np.expand_dims(param_mean_std['Tex_Para_mean'], axis=0), dtype=tf.float32)
+    tex_std = tf.constant(np.expand_dims(param_mean_std['Tex_Para_std'], axis=0) + 0.000000000000000001, dtype=tf.float32)
+
+    image_size = 1.0 * image_size
+    del param_mean_std
+
+    def unnormalize_labels(batch_size, pose_para, shape_para, exp_para, color_para, illum_para, tex_para):
+        # Shape_Para: shape=(None, 100)
+        # Pose_Para: shape=(None, 6)
+        # Exp_Para: shape=(None, 79)
+        # Color_Para: shape=(None, 6)
+        # Illum_Para: shape=(None, 9)
+        # Tex_Para: shape=(None, 40)
+
+        # unnormalize pose param
+        pose_para = pose_para * pose_std + pose_avg
+        pose_para_new = tf.concat([pose_para[:, 0:3], pose_para[:, 3:] * image_size], axis=1)
+
+        # unnormalize shape, exp and tex
+        shape_para = shape_para * shape_std + shape_avg
+        exp_para = exp_para * exp_std + exp_avg
+        tex_para = tex_para * tex_std + tex_avg
+        illum_para = tf.concat([illum_para * illum_std + illum_avg, tf.constant(20.0, shape=(batch_size, 1), dtype=tf.float32)], axis=1)
+        color_para = tf.concat([color_para * color_std + color_avg, tf.constant(1.0, shape=(batch_size, 1), dtype=tf.float32)], axis=1)
+
+        return pose_para_new, shape_para, exp_para, color_para, illum_para, tex_para
+
+    return unnormalize_labels
+
+
 def load_image_from_file(img_file, image_size, resolution, image_format='RGB'):
     """
     load image from file,
