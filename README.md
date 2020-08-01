@@ -97,3 +97,4 @@ NO WARRANTY: The data/code are provided "as is" and any express or implied warra
 NO DISTRIBUTION: You are not allowed to sublicense or distribute the DATA/CODE in whole or in part to any third party.
 
 BFM model: https://faces.dmi.unibas.ch/bfm/index.php?nav=1-2&id=downloads
+FFHQ: https://github.com/NVlabs/ffhq-dataset
