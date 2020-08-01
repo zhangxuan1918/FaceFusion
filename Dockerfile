@@ -2,7 +2,8 @@ FROM xuan1918/tensorflow/3dmm-rendering:v0.2.3-py3
 
 ARG GITHUB_PAT
 
-RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.7-dev
+RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.7-dev \
+    libglib2.0-0 libgtk-3-dev libpng-dev libjpeg-dev libopenexr-dev libtiff-dev libwebp-dev
 
 RUN pip install --upgrade pip
 

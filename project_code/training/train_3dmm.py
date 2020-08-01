@@ -127,9 +127,11 @@ class TrainFaceModel(ABC):
         self.enable_profiler = enable_profiler
         self.param_mean_std_path = param_mean_std_path
 
-        if data_name == '300W_LP':
+        if data_name.upper() == '300W_LP':
             self.unnormalize_labels = fn_unnormalize_300W_LP_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
-        elif data_name == '80K':
+        elif data_name.upper() == '80K':
+            self.unnormalize_labels = fn_unnormalize_80k_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
+        elif data_name.upper() == 'FFHQ':
             self.unnormalize_labels = fn_unnormalize_80k_labels(param_mean_std_path=self.param_mean_std_path, image_size=self.resolution)
 
     def setup_model_dir(self):

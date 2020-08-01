@@ -5,7 +5,7 @@ import os
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, split_80k_labels
+from project_code.create_tfrecord.export_tfrecord_util import split_ffhq_labels
 from project_code.misc.image_utils import process_reals_supervised
 from project_code.training.dataset import TFRecordDatasetSupervised
 from project_code.training.optimization import AdamWeightDecay
@@ -101,15 +101,10 @@ class TrainFaceModelSupervised(TrainFaceModel):
         }
 
     def get_loss(self, gt_params, gt_images, est_params, batch_size):
-        # gt contains roi, landmarks and all face parameters
-        # est only contains face parameters
-        # split params and unnormalize params
+        # gt_params have only landmarks
+        gt_lm = tf.reshape(gt_params, shape=(-1, 2, 68)) * self.resolution
 
-        gt_pp, gt_shape, gt_exp, _, _, _ = split_80k_labels(gt_params)
-        gt_pp, gt_shape, gt_exp, _, _, _ = self.unnormalize_labels(
-            batch_size, gt_pp, gt_shape, gt_exp, None, None, None)
-
-        est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_80k_labels(est_params)
+        est_pp, est_shape, est_exp, est_color, est_illum, est_tex = split_ffhq_labels(est_params)
 
         # regularization loss
         loss_reg = tf.sqrt(tf.reduce_mean(tf.square(est_pp)))
@@ -123,15 +118,14 @@ class TrainFaceModelSupervised(TrainFaceModel):
             batch_size, est_pp, est_shape, est_exp, est_color, est_illum, est_tex)
 
         # add 0 to t3d z axis
-        # 80k dataset only have x, y translation
+        # only have x, y translation
         est_pp = tf.concat([est_pp[:, :-1], tf.constant(0.0, shape=(batch_size, 1), dtype=tf.float32), est_pp[:, -1:]], axis=1)
-        gt_pp = tf.concat([gt_pp[:, :-1], tf.constant(0.0, shape=(batch_size, 1), dtype=tf.float32), gt_pp[:, -1:]], axis=1)
 
         # image rendered with ground truth shape param, loss on texture/color
         est_images = render_batch(
-            pose_param=gt_pp,
-            shape_param=gt_shape,
-            exp_param=gt_exp,
+            pose_param=est_pp,
+            shape_param=est_shape,
+            exp_param=est_exp,
             tex_param=est_tex,
             color_param=est_color,
             illum_param=est_illum,
@@ -141,6 +135,7 @@ class TrainFaceModelSupervised(TrainFaceModel):
             batch_size=batch_size
         )
         gt_images = tf.cast(tf.where(est_images > 0, gt_images, 0), tf.float32)
+        loss_img = tf.sqrt(tf.reduce_mean(tf.square(est_images - gt_images)))
 
         # landmark loss
         est_lm = self.bfm.get_landmarks(
@@ -153,19 +148,9 @@ class TrainFaceModelSupervised(TrainFaceModel):
             is_plot=True
         )
 
-        gt_lm = self.bfm.get_landmarks(
-            shape_param=gt_shape,
-            exp_param=gt_exp,
-            pose_param=gt_pp,
-            batch_size=batch_size,
-            resolution=self.resolution,
-            is_2d=True,
-            is_plot=True
-        )
-
         loss_lms = tf.sqrt(tf.reduce_mean(tf.square(gt_lm - est_lm)))
-        loss_img = tf.sqrt(tf.reduce_mean(tf.square(est_images - gt_images)))
-        return loss_img / self.strategy.num_replicas_in_sync, 5.0 * loss_lms / self.strategy.num_replicas_in_sync, loss_reg / self.strategy.num_replicas_in_sync
+
+        return loss_img / self.strategy.num_replicas_in_sync, 50.0 * loss_lms / self.strategy.num_replicas_in_sync, loss_reg / self.strategy.num_replicas_in_sync
 
     def _replicated_step(self, inputs):
         reals, labels = inputs
@@ -234,7 +219,7 @@ if __name__ == '__main__':
         param_mean_std_path='/opt/data/face-fuse/stats_80k.npz',
         n_tex_para=40,  # number of texture params used
         n_shape_para=100, # number of shape params used
-        data_dir='/opt/data/face-fuse/supervised_80k/',  # data directory for training and evaluating
+        data_dir='/opt/data/face-fuse/supervised_ffhq/',  # data directory for training and evaluating
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # model directory for saving trained model
         epochs=25,  # number of epochs for training
@@ -253,7 +238,7 @@ if __name__ == '__main__':
         steps_per_loop=100,  # steps per loop, for efficiency
         model_output_size=240,
         enable_profiler=False,
-        data_name='80K' # which dataset to use, 300W_LP or 80K
+        data_name='FFHQ' # which dataset to use, 300W_LP or 80K or FFHQ
     )
 
     train_model.train()

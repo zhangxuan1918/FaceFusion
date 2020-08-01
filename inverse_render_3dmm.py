@@ -1,14 +1,14 @@
 import os
+
 import matplotlib.pyplot as plt
-import PIL
 import numpy as np
 import tensorflow as tf
 from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
-from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, fn_unnormalize_300W_LP_labels, \
-    fn_unnormalize_80k_labels, split_80k_labels
-from project_code.misc.image_utils import process_reals_unsupervised, process_reals_supervised
+from project_code.create_tfrecord.export_tfrecord_util import fn_unnormalize_ffhq_labels, split_ffhq_labels
+from project_code.face_detector.face_aligner import align_face
+from project_code.misc.image_utils import process_reals_supervised
 
 
 def load_model(pd_model_path):
@@ -18,17 +18,16 @@ def load_model(pd_model_path):
 def load_images(image_folder, image_names, resolution):
     for img_name in image_names:
         image_file = os.path.join(image_folder, img_name)
-        img = np.asarray(PIL.Image.open(image_file))
-        img = PIL.Image.fromarray(img, 'RGB')
-        # resize image
-        img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
-        img = np.asarray(img)
-        yield img_name, img
+        try:
+            img = align_face(image_file, output_size=resolution)
+            yield img_name, np.array(img)
+        except:
+            continue
 
 
-def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_path, save_to, image_folder, image_names,
-                           batch_size, resolution,
-                           n_tex_para, n_shape_para):
+def inverse_rendering(bfm_path, exp_path, pd_model_path, param_mean_std_path, save_to, image_folder, image_names,
+                      batch_size, resolution,
+                      n_tex_para, n_shape_para):
     print('Loading BFM model')
     bfm = TfMorphableModel(
         model_path=bfm_path,
@@ -38,7 +37,7 @@ def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_pat
     )
     model = load_model(pd_model_path=pd_model_path)
     filename = os.path.join(save_to, '{0}.jpg')
-    unnormalize_labels = fn_unnormalize_80k_labels(param_mean_std_path=param_mean_std_path, image_size=image_size)
+    unnormalize_labels = fn_unnormalize_ffhq_labels(param_mean_std_path=param_mean_std_path, image_size=image_size)
     images = []
     images_names = []
     for img_name, img in load_images(image_folder=image_folder, image_names=image_names, resolution=resolution):
@@ -48,7 +47,7 @@ def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_pat
             reals = tf.convert_to_tensor(images, dtype=tf.uint8)
             reals = process_reals_supervised(x=reals, mirror_augment=False, drange_data=[0, 255], drange_net=[-1, 1])
             est_params = model(reals)
-            pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_80k_labels(est_params)
+            pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_ffhq_labels(est_params)
             pose_para, shape_para, exp_para, color_para, illum_para, tex_para = unnormalize_labels(
                 batch_size, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
             # add 0 to t3d z axis
@@ -137,68 +136,17 @@ if __name__ == '__main__':
     n_tex_para = 40
     n_shape_para = 100
     param_mean_std_path = '/opt/data/face-fuse/stats_80k.npz'
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_80k/ffhq/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     exp_path = '/opt/data/face-fuse/exp_80k.npz'
-    pd_model_path = '/opt/data/face-fuse/model/20200722/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200725/supervised-exported/'
     image_size = 224
 
-    image_folder = '/opt/project/input/images/ffhq/'
-    image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
-                   '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
-                   '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
-                   '38859.png', '48574.png', '58289.png']
+    image_folder = '/opt/project/data/input'
+    image_names = ['pic17.jpeg', 'pic18.jpeg']
 
-    # image_folder = '/opt/data/300W_LP/AFW/'
-    # image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
-    #                'AFW_2805422179_3_1.jpg', 'AFW_4492032921_1_3.jpg', 'AFW_955659370_2_7.jpg',
-    #                'AFW_2805422179_3_2.jpg', 'AFW_4492032921_1_4.jpg', 'AFW_955659370_2_8.jpg',
-    #                'AFW_2805422179_3_3.jpg', 'AFW_4492032921_1_5.jpg', 'AFW_955659370_2_9.jpg',
-    #                'AFW_2805422179_3_4.jpg', 'AFW_4492032921_1_6.jpg']
+    save_rendered_to = '/opt/project/data/output'
 
-    # image_folder = '/opt/data/300W_LP/HELEN/'
-    # image_names = ['HELEN_2442107375_1_3.jpg',
-    #                'HELEN_2422195369_1_1.jpg',
-    #                'HELEN_3223115234_1_3.jpg',
-    #                'HELEN_2422195369_1_11.jpg',
-    #                'HELEN_3223115234_1_11.jpg',
-    #                'HELEN_2421887901_1_7.jpg',
-    #                'HELEN_3222262589_1_3.jpg',
-    #                'HELEN_2421887901_1_1.jpg',
-    #                'HELEN_3222262589_1_15.jpg',
-    #                'HELEN_2421887901_1_11.jpg',
-    #                'HELEN_3222261569_1_7.jpg',
-    #                'HELEN_2421145346_1_3.jpg',
-    #                'HELEN_3222261569_1_13.jpg',
-    #                'HELEN_2421145346_1_14.jpg',
-    #                'HELEN_3220402975_1_9.jpg',
-    #                'HELEN_2421145346_1_0.jpg']
-
-    # image_folder = '/opt/project/input/images/random/'
-    # image_names = ['input_image.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
-    #                'pic8.jpeg', 'pic9.jpeg', 'pic10.jpeg', 'pic11.jpeg', 'pic12.jpeg', 'pic13.jpeg', 'pic14.jpeg',
-    #                'pic15.jpeg', 'pic16.jpeg'
-    #                ]
-
-    # image_folder = '/opt/data/300W_LP/IBUG/'
-    # image_names = ['IBUG_image_99_9.jpg',
-    #                'IBUG_image_069_1_4.jpg',
-    #                'IBUG_image_119_8.jpg',
-    #                'IBUG_image_068_1_4.jpg',
-    #                'IBUG_image_067_1_5.jpg',
-    #                'IBUG_image_118_7.jpg',
-    #                'IBUG_image_066_1_8.jpg',
-    #                'IBUG_image_115_1.jpg',
-    #                'IBUG_image_061_1_9.jpg',
-    #                'IBUG_image_059_7.jpg',
-    #                'IBUG_image_114_5.jpg',
-    #                'IBUG_image_113_3.jpg',
-    #                'IBUG_image_057_1_1.jpg',
-    #                'IBUG_image_111_8.jpg',
-    #                'IBUG_image_054_10.jpg',
-    #                'IBUG_image_053_6.jpg']
-
-    check_prediction_adhoc(
+    inverse_rendering(
         bfm_path, exp_path, pd_model_path, param_mean_std_path, save_rendered_to, image_folder=image_folder,
-        image_names=image_names, batch_size=4, resolution=image_size, n_tex_para=n_tex_para, n_shape_para=n_shape_para
+        image_names=image_names, batch_size=1, resolution=image_size, n_tex_para=n_tex_para, n_shape_para=n_shape_para
     )
