@@ -90,3 +90,10 @@ be able to detect face. Better face and landmark detector can be found here: htt
 One way to remove the landmark detector is to regenerate the training data from raw FFHQ dataset. Detect the face and crop 
 the face region without using landmarks. Then retrain the model.
 
+# License
+
+NON-COMMERCIAL USE: The license granted is for internal, non-commercial research, evaluation or testing purposes only. Any use of the DATA or its contents to manufacture or sell products or technologies (or portions thereof) either directly or indirectly for any direct or indirect for-profit purposes is strictly prohibited.
+NO WARRANTY: The data are provided "as is" and any express or implied warranties are disclaimed.
+NO DISTRIBUTION: You are not allowed to sublicense or distribute the DATA in whole or in part to any third party.
+
+BFM model: https://faces.dmi.unibas.ch/bfm/index.php?nav=1-2&id=downloads
