@@ -7,7 +7,8 @@ from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 from project_code.create_tfrecord.export_tfrecord_util import split_300W_LP_labels, fn_unnormalize_300W_LP_labels, \
-    fn_unnormalize_80k_labels, split_80k_labels
+    fn_unnormalize_80k_labels, split_80k_labels, fn_unnormalize_ffhq_labels, split_ffhq_labels
+from project_code.face_detector.face_aligner import align_face
 from project_code.misc.image_utils import process_reals_unsupervised, process_reals_supervised
 
 
@@ -18,12 +19,11 @@ def load_model(pd_model_path):
 def load_images(image_folder, image_names, resolution):
     for img_name in image_names:
         image_file = os.path.join(image_folder, img_name)
-        img = np.asarray(PIL.Image.open(image_file))
-        img = PIL.Image.fromarray(img, 'RGB')
-        # resize image
-        img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
-        img = np.asarray(img)
-        yield img_name, img
+        try:
+            img = align_face(image_file, output_size=resolution)
+            yield img_name, np.array(img)
+        except:
+            continue
 
 
 def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_path, save_to, image_folder, image_names,
@@ -38,7 +38,7 @@ def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_pat
     )
     model = load_model(pd_model_path=pd_model_path)
     filename = os.path.join(save_to, '{0}.jpg')
-    unnormalize_labels = fn_unnormalize_80k_labels(param_mean_std_path=param_mean_std_path, image_size=image_size)
+    unnormalize_labels = fn_unnormalize_ffhq_labels(param_mean_std_path=param_mean_std_path, image_size=image_size)
     images = []
     images_names = []
     for img_name, img in load_images(image_folder=image_folder, image_names=image_names, resolution=resolution):
@@ -48,7 +48,7 @@ def check_prediction_adhoc(bfm_path, exp_path, pd_model_path, param_mean_std_pat
             reals = tf.convert_to_tensor(images, dtype=tf.uint8)
             reals = process_reals_supervised(x=reals, mirror_augment=False, drange_data=[0, 255], drange_net=[-1, 1])
             est_params = model(reals)
-            pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_80k_labels(est_params)
+            pose_para, shape_para, exp_para, color_para, illum_para, tex_para = split_ffhq_labels(est_params)
             pose_para, shape_para, exp_para, color_para, illum_para, tex_para = unnormalize_labels(
                 batch_size, pose_para, shape_para, exp_para, color_para, illum_para, tex_para)
             # add 0 to t3d z axis
@@ -137,13 +137,18 @@ if __name__ == '__main__':
     n_tex_para = 40
     n_shape_para = 100
     param_mean_std_path = '/opt/data/face-fuse/stats_80k.npz'
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_80k/ffhq/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_ffhq/ffhq/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     exp_path = '/opt/data/face-fuse/exp_80k.npz'
-    pd_model_path = '/opt/data/face-fuse/model/20200722/supervised-exported/'
+    pd_model_path = '/opt/data/face-fuse/model/20200725/supervised-exported/'
     image_size = 224
 
     image_folder = '/opt/project/input/images/ffhq/'
+    # image_names = ['69174.png', '69533.png', '68241.png', '69282.png']
+    # image_names = ['07248.png', '07377.png', '10154.png', '20658.png', '20983.png', '22976.png', '27516.png',
+    #                '34895.png', '46096.png', '46955.png', '52354.png', '52675.png', '56202.png', '58457.png',
+    #                '64807.png', '65716.png']
+
     image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
                    '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
                    '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
@@ -174,7 +179,7 @@ if __name__ == '__main__':
     #                'HELEN_3220402975_1_9.jpg',
     #                'HELEN_2421145346_1_0.jpg']
 
-    # image_folder = '/opt/project/input/images/random/'
+    # image_folder = '/opt/project/input/images/random_aligned/'
     # image_names = ['pic1.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
     #                'pic8.jpeg', 'pic9.jpeg', 'pic10.jpeg', 'pic11.jpeg', 'pic12.jpeg', 'pic13.jpeg', 'pic14.jpeg',
     #                'pic15.jpeg', 'pic16.jpeg'

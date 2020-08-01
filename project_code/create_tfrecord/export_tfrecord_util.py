@@ -370,6 +370,44 @@ def fn_unnormalize_80k_labels(param_mean_std_path, image_size):
     return unnormalize_labels
 
 
+def split_ffhq_labels(labels):
+    # network output
+    # Pose_Para: shape=(None, 6)
+    # Shape_Para: shape=(None, 100)
+    # Exp_Para: shape=(None, 79)
+    # Color_Para: shape=(None, 6)
+    # Illum_Para: shape=(None, 9)
+    # Tex_Para: shape=(None, 40)
+    # Total: 240 params
+    """
+
+    :param labels:
+    :return:
+
+    # training data
+    Shape_Para: shape=(None, 100)
+    Pose_Para: shape=(None, 6)
+    Exp_Para: shape=(None, 79)
+
+    # network output
+    Pose_Para: shape=(None, 6)
+    Shape_Para: shape=(None, 100)
+    Exp_Para: shape=(None, 79)
+    Color_Para: shape=(None, 6)
+    Illum_Para: shape=(None, 9)
+    Tex_Para: shape=(None, 40)
+    """
+    assert isinstance(labels, tf.Tensor)
+
+    if labels.shape[1] == 240:
+        # without roi
+        # with landmarks
+        pose_para, shape_para, exp_para, color_para, illum_para, tex_para = tf.split(labels, num_or_size_splits=[6, 100, 79, 6, 9, 40], axis=1)
+        return pose_para, shape_para, exp_para, color_para, illum_para, tex_para
+    else:
+        raise Exception('`labels` shape[1] is wrong')
+
+
 def fn_extract_ffhq_labels(image_size, txt_suffix):
 
     def get_labels(img_filename):
