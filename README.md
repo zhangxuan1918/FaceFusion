@@ -92,8 +92,8 @@ the face region without using landmarks. Then retrain the model.
 
 # License
 
-NON-COMMERCIAL USE: The license granted is for internal, non-commercial research, evaluation or testing purposes only. Any use of the DATA or its contents to manufacture or sell products or technologies (or portions thereof) either directly or indirectly for any direct or indirect for-profit purposes is strictly prohibited.
-NO WARRANTY: The data are provided "as is" and any express or implied warranties are disclaimed.
-NO DISTRIBUTION: You are not allowed to sublicense or distribute the DATA in whole or in part to any third party.
+NON-COMMERCIAL USE: The license granted is for internal, non-commercial research, evaluation or testing purposes only. Any use of the DATA/CODE or its contents to manufacture or sell products or technologies (or portions thereof) either directly or indirectly for any direct or indirect for-profit purposes is strictly prohibited.
+NO WARRANTY: The data/code are provided "as is" and any express or implied warranties are disclaimed.
+NO DISTRIBUTION: You are not allowed to sublicense or distribute the DATA/CODE in whole or in part to any third party.
 
 BFM model: https://faces.dmi.unibas.ch/bfm/index.php?nav=1-2&id=downloads
