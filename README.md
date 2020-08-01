@@ -59,6 +59,9 @@ parameters. The second part is the rendering loss which aims to recover the text
 An example is provided in file [inverse_render_3dmm.py](./inverse_render_3dmm.py).
 
 1. build the docker image
+    * build docker image first from https://github.com/zhangxuan1918/tensorflow3DMMRendering
+        * code to render 3DMM model
+    * build docker image for this project
 2. download data
     * BMF09
     * expression: [exp_80k.npz](https://drive.google.com/file/d/1lMLj_8_Z1gUcoURxs8hr1E7_HVBOSv8L/view?usp=sharing)
@@ -76,6 +79,10 @@ An example is provided in file [inverse_render_3dmm.py](./inverse_render_3dmm.py
     * image_folder: input image folder
     * image_names: input image names
     * save_rendered_to: save rendered images and landmarks
+
+# Rendering
+
+The rendering code can be found here: [rendering](https://github.com/zhangxuan1918/tensorflow3DMMRendering)
 
 # Issues
 

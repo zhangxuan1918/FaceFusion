@@ -11,8 +11,6 @@ services:
       - "6009:6009"
     environment:
         - NVIDIA_VISIBLE_DEVICES=all
-    env_file:
-      - face_fusion.env
     volumes:
       - /home/xuan/Projects/data/:/opt/data/
 
