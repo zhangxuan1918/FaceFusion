@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y libsm6 libxext6 libxrender-dev python3.
 RUN pip install --upgrade pip
 
 # install tensorflow3DMMRendering
-RUN pip install git+https://zhangxuan1918:$GITHUB_PAT@github.com/zhangxuan1918/tensorflow3DMMRendering.git
+RUN pip install git+https://github.com/zhangxuan1918/tensorflow3DMMRendering.git
 
 # install tensorflow models
 #RUN git clone https://github.com/zhangxuan1918/models.git /tensorflow_models
