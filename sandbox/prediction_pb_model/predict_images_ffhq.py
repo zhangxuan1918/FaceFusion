@@ -137,7 +137,7 @@ if __name__ == '__main__':
     n_tex_para = 40
     n_shape_para = 100
     param_mean_std_path = '/opt/data/face-fuse/stats_80k.npz'
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_ffhq/300W_LP/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_ffhq/random/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     exp_path = '/opt/data/face-fuse/exp_80k.npz'
     pd_model_path = '/opt/data/face-fuse/model/20200725/supervised-exported/'
@@ -179,10 +179,10 @@ if __name__ == '__main__':
     #                'HELEN_3220402975_1_9.jpg',
     #                'HELEN_2421145346_1_0.jpg']
 
-    image_folder = '/opt/project/input/images/random_aligned/'
-    image_names = ['pic1.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
+    image_folder = '/opt/project/input/images/random/'
+    image_names = ['pic2.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
                    'pic8.jpeg', 'pic9.jpeg', 'pic10.jpeg', 'pic11.jpeg', 'pic12.jpeg', 'pic13.jpeg', 'pic14.jpeg',
-                   'pic15.jpeg', 'pic16.jpeg'
+                   'pic15.jpeg', 'pic16.jpeg', 'pic17.jpeg', 'pic18.jpeg'
                    ]
 
     # image_folder = '/opt/data/300W_LP/IBUG/'
@@ -205,5 +205,5 @@ if __name__ == '__main__':
 
     check_prediction_adhoc(
         bfm_path, exp_path, pd_model_path, param_mean_std_path, save_rendered_to, image_folder=image_folder,
-        image_names=image_names, batch_size=4, resolution=image_size, n_tex_para=n_tex_para, n_shape_para=n_shape_para
+        image_names=image_names, batch_size=2, resolution=image_size, n_tex_para=n_tex_para, n_shape_para=n_shape_para
     )

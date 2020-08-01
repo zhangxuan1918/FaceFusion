@@ -137,22 +137,22 @@ if __name__ == '__main__':
     n_tex_para = 40
     n_shape_para = 100
     param_mean_std_path = '/opt/data/face-fuse/stats_80k.npz'
-    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_ffhq/ffhq/'
+    save_rendered_to = '/opt/project/output/adhoc_predict/supervised_ffhq/random/'
     bfm_path = '/opt/data/BFM/BFM.mat'
     exp_path = '/opt/data/face-fuse/exp_80k.npz'
     pd_model_path = '/opt/data/face-fuse/model/20200725/supervised-exported/'
     image_size = 224
 
-    image_folder = '/opt/project/input/images/ffhq/'
+    # image_folder = '/opt/project/input/images/ffhq/'
     # image_names = ['69174.png', '69533.png', '68241.png', '69282.png']
     # image_names = ['07248.png', '07377.png', '10154.png', '20658.png', '20983.png', '22976.png', '27516.png',
     #                '34895.png', '46096.png', '46955.png', '52354.png', '52675.png', '56202.png', '58457.png',
     #                '64807.png', '65716.png']
 
-    image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
-                   '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
-                   '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
-                   '38859.png', '48574.png', '58289.png']
+    # image_names = ['09711.png', '19426.png', '29141.png', '38856.png', '48571.png', '58286.png', '09712.png',
+    #                '19427.png', '29142.png', '38857.png', '48572.png', '58287.png', '09713.png', '19428.png',
+    #                '29143.png', '38858.png', '48573.png', '58288.png', '09714.png', '19429.png', '29144.png',
+    #                '38859.png', '48574.png', '58289.png']
 
     # image_folder = '/opt/data/300W_LP/AFW/'
     # image_names = ['AFW_2805422179_3_17.jpg', 'AFW_4492032921_1_2.jpg', 'AFW_955659370_2_6.jpg',
@@ -179,11 +179,11 @@ if __name__ == '__main__':
     #                'HELEN_3220402975_1_9.jpg',
     #                'HELEN_2421145346_1_0.jpg']
 
-    # image_folder = '/opt/project/input/images/random_aligned/'
-    # image_names = ['pic1.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
-    #                'pic8.jpeg', 'pic9.jpeg', 'pic10.jpeg', 'pic11.jpeg', 'pic12.jpeg', 'pic13.jpeg', 'pic14.jpeg',
-    #                'pic15.jpeg', 'pic16.jpeg'
-    #                ]
+    image_folder = '/opt/project/input/images/random/'
+    image_names = ['input_image.jpeg', 'pic2.jpeg', 'pic3.jpeg', 'pic4.jpeg', 'pic5.jpeg', 'pic6.jpeg', 'pic7.jpeg',
+                   'pic8.jpeg', 'pic9.jpeg', 'pic10.jpeg', 'pic11.jpeg', 'pic12.jpeg', 'pic13.jpeg', 'pic14.jpeg',
+                   'pic15.jpeg', 'pic16.jpeg','pic17.jpeg', 'pic18.jpeg'
+                   ]
 
     # image_folder = '/opt/data/300W_LP/IBUG/'
     # image_names = ['IBUG_image_99_9.jpg',

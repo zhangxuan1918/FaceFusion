@@ -1,4 +1,6 @@
 """
+copied from https://gist.github.com/lzhbrian/bde87ab23b499dd02ba4f588258f57d5
+
 brief: face alignment with FFHQ method (https://github.com/NVlabs/ffhq-dataset)
 author: lzhbrian (https://lzhbrian.me)
 date: 2020.1.5
@@ -140,20 +142,7 @@ def align_face(filepath, output_size=224, transform_size=4096, enable_padding=Tr
 
 
 if __name__ == '__main__':
-    # filepath = '/opt/project/input/images/random/pic1.jpeg'
-    # output_path = './aligned_face.jpg'
-    # img = align_face(filepath)
-    # img.save(output_path)
-
-    input_folder = '/opt/project/input/images/random/'
-    output_folder = '/opt/project/input/images/random_aligned/'
-
-    for img_name in os.listdir(input_folder):
-        input_img = os.path.join(input_folder, img_name)
-        if os.path.isfile(input_img):
-            output_img = os.path.join(output_folder, img_name)
-            try:
-                img = align_face(input_img)
-                img.save(output_img)
-            except:
-                print('error + ' + img_name)
+    filepath = '/opt/project/input/images/random/pic1.jpeg'
+    output_path = './aligned_face.jpg'
+    img = align_face(filepath)
+    img.save(output_path)
