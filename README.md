@@ -11,38 +11,17 @@ This project uses CNN to do inverse rendering using 3DMM. In summary, it build 3
 
 # Results
 
-Images in `data/input` are found in google
+#### FFHQ data
 
-input image 
+[FFHQ](./data/ffhq_res.jpg)
 
-![pic1](./data/input/pic1.jpeg)
+#### 300W_LP data
 
-rendered    
+[300W_LP](./data/300wlp_res.jpg)
 
-![pic1](./data/output/pic1.jpeg.jpg)
+#### Images found online
 
-input image 
-
-![pic1](./data/input/pic6.jpeg)
-
-rendered    
-
-![pic1](./data/output/pic6.jpeg.jpg)
-
-input image 
-
-![pic1](./data/input/pic11.jpeg)
-
-rendered    
-
-![pic1](./data/output/pic11.jpeg.jpg)
-
-### Failed cases
-image from 300W_LP
-
-![pic1](data/failed/pic1.jpg)
-![pic1](data/failed/pic2.jpg)
-![pic1](data/failed/pic3.jpg)
+[RANDOM](./data/random.jpg)
 
 # Model
 
