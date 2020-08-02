@@ -13,15 +13,15 @@ This project uses CNN to do inverse rendering using 3DMM. In summary, it build 3
 
 #### FFHQ data
 
-[FFHQ](./data/ffhq_res.jpg)
+![FFHQ](./data/ffhq_res.jpg)
 
 #### 300W_LP data
 
-[300W_LP](./data/300wlp_res.jpg)
+![300W_LP](./data/300wlp_res.jpg)
 
 #### Images found online
 
-[RANDOM](./data/random.jpg)
+![RANDOM](./data/random.jpg)
 
 # Model
 
