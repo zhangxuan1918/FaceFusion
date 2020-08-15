@@ -28,7 +28,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
             repeat=True,
             batch_size=self.train_batch_size,
             num_gpu=self.num_gpu,
-            strategy=self.strategy
+            strategy=self.strategy,
+            is_augment=self.is_augment
         )
 
     def create_evaluating_dataset(self):
@@ -40,7 +41,8 @@ class TrainFaceModelSupervised(TrainFaceModel):
             repeat=False,
             batch_size=self.eval_batch_size,
             num_gpu=self.num_gpu,
-            strategy=self.strategy
+            strategy=self.strategy,
+            is_augment=False
         )
 
     def init_optimizer(self):
@@ -219,12 +221,13 @@ if __name__ == '__main__':
         param_mean_std_path='/opt/data/face-fuse/stats_80k.npz',
         n_tex_para=40,  # number of texture params used
         n_shape_para=100, # number of shape params used
-        data_dir='/opt/data/face-fuse/supervised_ffhq/',  # data directory for training and evaluating
+        data_dir='/opt/data/face-fuse/supervised_ffhq_arg/',  # data directory for training and evaluating
+        is_augment=True,
         model_dir='/opt/data/face-fuse/model/{0}/supervised/'.format(date_yyyymmdd),
         # model directory for saving trained model
         epochs=25,  # number of epochs for training
-        train_batch_size=64,  # batch size for training
-        eval_batch_size=64,  # batch size for evaluating
+        train_batch_size=32,  # batch size for training
+        eval_batch_size=32,  # batch size for evaluating
         initial_lr=0.00005,  # initial learning rate
         init_checkpoint=None,  # initial checkpoint to restore model if provided
         init_model_weight_path=None,  # '/opt/data/face-fuse/model/face_vgg_v2/weights.h5',
@@ -232,13 +235,13 @@ if __name__ == '__main__':
         resolution=224,  # image resolution
         num_gpu=1,  # number of gpus
         stage='SUPERVISED',  # stage name
-        backbone='resnet18',  # model architecture
+        backbone='resnet50',  # model architecture
         distribute_strategy='one_device',  # distribution strategy when num_gpu > 1
         run_eagerly=False,
         steps_per_loop=100,  # steps per loop, for efficiency
         model_output_size=240,
         enable_profiler=False,
-        data_name='FFHQ' # which dataset to use, 300W_LP or 80K or FFHQ
+        data_name='FFHQ'# which dataset to use, 300W_LP or 80K or FFHQ,
     )
 
     train_model.train()

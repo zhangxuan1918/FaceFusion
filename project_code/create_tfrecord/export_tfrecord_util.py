@@ -413,7 +413,7 @@ def fn_extract_ffhq_labels(image_size, txt_suffix):
     def get_labels(img_filename):
         # label file has the same name as image
         # text format
-        # landmark: (2, 64) ==> (136, )
+        # landmark: (2, 68) ==> (136, )
         # Total: 136 params
 
         label_filename = os.path.splitext(img_filename)[0] + txt_suffix
@@ -488,4 +488,38 @@ def load_image_from_file(img_file, image_size, resolution, image_format='RGB'):
     # resize image
     if resolution != image_size:
         img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
+    return np.array(img)
+
+
+def load_image_from_file_with_padding(img_file, image_size, resolution, padding_size=None, image_format='RGB'):
+    """
+    load image from file,
+    if resolution != image_size, rescale image to resolution
+    :param img_file: image file path
+    :param image_size: original image size
+    :param resolution: target image size
+    :return:
+    """
+    # load image
+    img = np.asarray(PIL.Image.open(img_file))
+    assert img.shape == (image_size, image_size, 3)
+    img = PIL.Image.fromarray(img, image_format)
+    # resize image
+    if resolution != image_size:
+        img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
+
+    if padding_size:
+        # padding image
+        # image
+        #     pad pad pad pad pad
+        #     pad             pad
+        #     pad             pad
+        #     pad   IMAGE     pad
+        #     pad             pad
+        #     pad pad pad pad pad
+
+        desired_size = resolution + 2 * padding_size
+        img_new = PIL.Image.new(image_format, (desired_size, desired_size))
+        img_new.paste(img, (padding_size, padding_size))
+        return np.array(img_new)
     return np.array(img)

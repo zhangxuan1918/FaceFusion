@@ -39,7 +39,7 @@ class FaceDetectorDlib(FaceDetector):
             # eye_to_mouth = mouth_avg - eye_avg
 
             # face: [left, top, right, bottom]
-            eye_to_eye = np.asarray([0.5 * (face[2] - face[0]), 0])
+            eye_to_eye = np.asarray([0.8 * (face[2] - face[0]), 0])
             eye_to_mouth = np.asarray([0, 0.65 * (face[1] - face[3])])
             eye_avg = np.asarray([0.5 * (face[2] + face[0]), 1.2 * face[1]])
 

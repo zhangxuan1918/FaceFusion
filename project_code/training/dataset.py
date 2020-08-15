@@ -1,7 +1,8 @@
 import glob
 import os
 from abc import abstractmethod, ABC
-
+import tensorflow_graphics as tfg
+import tensorflow_addons as tfa
 import numpy as np
 import tensorflow as tf
 
@@ -33,7 +34,7 @@ def parse_tfrecord_tf_unsupervised(record):
     })
     image = tf.io.decode_raw(features['image'], tf.uint8)
     mask = tf.io.decode_raw(features['mask'], tf.uint8)
-    return tf.reshape(image, features['shape']), tf.reshape(mask,features['shape'])
+    return tf.reshape(image, features['shape']), tf.reshape(mask, features['shape'])
 
 
 def parse_tfrecord_np_unsupervised(record):
@@ -43,6 +44,82 @@ def parse_tfrecord_np_unsupervised(record):
     image = ex.features.feature['image'].bytes_list.value[0]
     mask = ex.features.feature['mask'].bytes_list.value[0]
     return np.fromstring(image, np.uint8).reshape(shape), np.fromstring(mask, np.uint8).reshape(shape)
+
+
+def _augment_img_lmk_random_rescale(img, lmks):
+    pos = np.random.randint(low=0, high=112, size=2)
+    target_size = 224 + pos[0] + pos[1]
+    img = tf.image.crop_to_bounding_box(
+        img, 112-pos[0], 112-pos[0], target_size, target_size
+    )
+    # rescale image
+    img = tf.cast(tf.image.resize(img, (224, 224)), dtype=tf.uint8)
+    lmks = (lmks * 446 - 112 + pos[0]) / target_size
+    return img, lmks
+
+
+def _augment_img_lmk_random_rotate(img, lmks):
+    # angle = tf.random.uniform([], -30, 30) * np.pi / 180.
+    #
+    # # landmark rotation matrix
+    # matrix = tf.convert_to_tensor(
+    #     [[tf.cos(-angle), -tf.sin(-angle)],
+    #      [tf.sin(-angle), tf.cos(-angle)]],
+    #     dtype=tf.float32
+    # )
+
+    angle = tf.random.uniform([], minval=-30, maxval=30) * np.pi / 180
+    matrix = tfg.geometry.transformation.rotation_matrix_2d.from_euler([-angle])
+
+    # landmarks shape (136) -> (2, 68) -> (68, 2)
+    lmks = tf.transpose(tf.reshape(lmks, (2, 68)), (1, 0)) * 224.
+    center = tf.reshape(tf.convert_to_tensor([112, 112], dtype=tf.float32), (1, 2))
+    lmks = lmks - center
+    lmks = tfg.geometry.transformation.rotation_matrix_2d.rotate(
+        lmks, matrix
+    )
+    lmks += center
+
+    # landmarks shape (68, 2) -> (2, 68) -> (136)
+    lmks = tf.reshape(tf.transpose(lmks, (1, 0)), [-1]) / 224.
+
+    img = tfa.image.rotate(img, angles=angle, interpolation='BILINEAR')
+
+    return img, lmks
+
+
+def augment_ffhq_arg_dataset(img, lmks):
+    # p = np.random.rand()
+    p = tf.random.uniform([])
+    if p < 0.5:
+        # image
+        #     pad pad pad pad pad
+        #     pad             pad
+        #     pad             pad
+        #     pad   IMAGE     pad
+        #     pad             pad
+        #     pad pad pad pad pad
+        # pad = 112
+        # IMAGE = 224
+        # image size: (112 + 224 + 112) x (112 + 224 + 112)
+        # no crop and rescaling
+        img = img[112:336, 112:336, :]
+        lmks = lmks * 2.0 - 0.5
+    else:
+        # with augmentation: crop and rescaling
+        # random crop
+        # crop image
+        #   - top left corner: (pos[0], pos[0])
+        #   - bottom right corner: (pos[0] + 224 + pos[1], pos[0] + 224 + pos[1])
+        img, lmks = _augment_img_lmk_random_rescale(img, lmks)
+
+    # p2 = np.random.rand()
+    p2 = tf.random.uniform([])
+    if p2 < 0.5:
+        # with augmentation: rotation
+        img, lmks = _augment_img_lmk_random_rotate(img, lmks)
+
+    return img, lmks
 
 
 # Dataset class that loads data from tfrecords files
@@ -56,9 +133,10 @@ class TFRecordDataset(ABC):
                  shuffle_mb=4096,  # Shuffle data within specified window (megabytes), 0 = disable shuffling.
                  prefetch_mb=2048,  # Amount of data to prefetch (megabytes), 0 = disable prefetching.
                  buffer_mb=256,  # Read buffer size (megabytes).
-                 num_threads=1,   # Number of concurrent threads.
-                 num_gpu=1, # Number of gpu
-                 strategy=None # distributing strategy
+                 num_threads=1,  # Number of concurrent threads.
+                 num_gpu=1,  # Number of gpu
+                 strategy=None,  # distributing strategy,
+                 is_augment=False,  # whether to augment data or not
                  ):  # Data distribution for multi gpu
 
         if _sentinel is not None:
@@ -77,6 +155,7 @@ class TFRecordDataset(ABC):
         self.prefetch_mb = prefetch_mb
         self.buffer_mb = buffer_mb
         self.num_threads = num_threads
+        self.is_augment = is_augment
 
         if num_gpu > 1:
             self._tf_global_batch_in = self._tf_batch_in * num_gpu
@@ -147,6 +226,9 @@ class TFRecordDatasetSupervised(TFRecordDataset):
 
             _tf_labels_dataset = tf.data.Dataset.from_tensor_slices(self._np_labels)
             dset = tf.data.Dataset.zip((dset, _tf_labels_dataset))
+
+            if self.is_augment:
+                dset = dset.map(augment_ffhq_arg_dataset, num_parallel_calls=self.num_threads)
 
             bytes_per_item = np.prod(tfr_shape) * np.dtype(self.dtype).itemsize
             if self.shuffle_mb > 0:

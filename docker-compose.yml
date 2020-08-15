@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xuan1918/facefusion:v0.0.19
+    image: xuan1918/facefusion:v0.1.1
     container_name: face_fusion
     privileged: true
     ports:

@@ -44,7 +44,8 @@ class TrainFaceModel(ABC):
                  drange_net=[-1, 1],  # dynamic range for input images,
                  enable_profiler=False, # whether enable profiling server running
                  exp_path=None, # additional expresion path
-                 data_name='300W_LP'
+                 data_name='300W_LP',
+                 is_augment=False # whether to argument data, only works for FFHQ dataset
                  ):
         # load meta data
         with open(os.path.join(data_dir, 'meta.json'), 'r') as f:
@@ -104,7 +105,7 @@ class TrainFaceModel(ABC):
 
         self.train_dataset = None  # training dataset
         self.eval_dataset = None  # testing dataset
-
+        self.is_augment = is_augment
         self.model_dir = model_dir  # directory to store trained model and summary
         self.model = None
         self.optimizer = None
